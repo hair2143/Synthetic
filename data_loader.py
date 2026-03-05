@@ -12,6 +12,30 @@ RECENT_WEIGHT = float(os.getenv("RECENT_WEIGHT", 2.0))
 HISTORICAL_WEIGHT = float(os.getenv("HISTORICAL_WEIGHT", 1.0))
 CSV_PATH = os.getenv("CSV_PATH", "./data/reviews.csv")
 
+# ── Global CSV Cache (loaded once at startup) ──────────────────────────────────
+_CSV_CACHE = None
+_CSV_CACHE_PATH = None
+
+
+def _get_cached_csv(csv_path: str) -> pd.DataFrame:
+    """Load CSV once and cache in memory"""
+    global _CSV_CACHE, _CSV_CACHE_PATH
+    
+    if _CSV_CACHE is not None and _CSV_CACHE_PATH == csv_path:
+        return _CSV_CACHE
+    
+    if not os.path.exists(csv_path):
+        return pd.DataFrame()
+    
+    print(f"📂 Loading CSV (one-time)... {csv_path}")
+    raw = pd.read_csv(csv_path)
+    raw["review_date"] = pd.to_datetime(raw.get("review_date"), errors="coerce")
+    raw = _normalize_df(raw)
+    _CSV_CACHE = raw
+    _CSV_CACHE_PATH = csv_path
+    print(f"✅ CSV loaded: {len(raw):,} reviews cached")
+    return _CSV_CACHE
+
 
 def load_amazon_electronics(path: str) -> pd.DataFrame:
     """Load and normalize Amazon Electronics Reviews dataset"""
@@ -126,20 +150,18 @@ def get_reviews_for_product(product_id: str, csv_path: str = CSV_PATH) -> tuple:
 
     cutoff = datetime.now() - timedelta(days=RECENT_MONTHS * 30)
 
-    # --- HOT DATA: CSV (last 6 months) ---
-    recent_df = pd.DataFrame()
-    if os.path.exists(csv_path):
+    # --- CSV DATA (cached, all time periods) ---
+    csv_df = pd.DataFrame()
+    cached = _get_cached_csv(csv_path)
+    if not cached.empty:
         try:
-            raw = pd.read_csv(csv_path)
-            raw["review_date"] = pd.to_datetime(raw.get("review_date"), errors="coerce")
-            raw = _normalize_df(raw)
-            recent_df = raw[
-                (raw["product_id"] == product_id) &
-                (raw["review_date"] >= cutoff)
-            ].copy()
-            recent_df["weight"] = RECENT_WEIGHT
+            csv_df = cached[cached["product_id"] == product_id].copy()
+            # Weight recent reviews higher than older ones
+            csv_df["weight"] = csv_df["review_date"].apply(
+                lambda d: RECENT_WEIGHT if pd.notna(d) and d >= cutoff else HISTORICAL_WEIGHT
+            )
         except Exception as e:
-            print(f"CSV load warning: {e}")
+            print(f"CSV filter warning: {e}")
 
     # --- COLD DATA: PostgreSQL (older than 6 months) ---
     historical_df = pd.DataFrame()
@@ -151,14 +173,18 @@ def get_reviews_for_product(product_id: str, csv_path: str = CSV_PATH) -> tuple:
         print(f"DB load warning: {e}")
 
     # --- MERGE ---
-    frames = [f for f in [recent_df, historical_df] if not f.empty]
+    frames = [f for f in [csv_df, historical_df] if not f.empty]
+
+    recent_count = len(csv_df[csv_df["weight"] == RECENT_WEIGHT]) if not csv_df.empty else 0
+    older_csv_count = len(csv_df) - recent_count
 
     source_info = {
-        "recent_csv": f"{len(recent_df)} reviews (last {RECENT_MONTHS} months)",
+        "csv_recent": f"{recent_count} reviews (last {RECENT_MONTHS} months)",
+        "csv_older": f"{older_csv_count} reviews (older)",
         "historical_db": f"{len(historical_df)} reviews (PostgreSQL)",
-        "total": len(recent_df) + len(historical_df),
-        "csv_weight": f"{RECENT_WEIGHT}x",
-        "db_weight": f"{HISTORICAL_WEIGHT}x"
+        "total": len(csv_df) + len(historical_df),
+        "recent_weight": f"{RECENT_WEIGHT}x",
+        "historical_weight": f"{HISTORICAL_WEIGHT}x"
     }
 
     if not frames:
