@@ -7,19 +7,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Get absolute path based on script location
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 RECENT_MONTHS = int(os.getenv("RECENT_MONTHS", 6))
 RECENT_WEIGHT = float(os.getenv("RECENT_WEIGHT", 2.0))
 HISTORICAL_WEIGHT = float(os.getenv("HISTORICAL_WEIGHT", 1.0))
-CSV_PATH = os.getenv("CSV_PATH", "./data/reviews.csv")
+CSV_PATH = os.getenv("CSV_PATH", os.path.join(_BASE_DIR, "data", "reviews_backup.csv"))
 
 # ── Global CSV Cache (loaded once at startup) ──────────────────────────────────
 _CSV_CACHE = None
 _CSV_CACHE_PATH = None
+_PRODUCT_INDEX = None  # Dict mapping product_id -> list of row indices for O(1) lookup
 
 
 def _get_cached_csv(csv_path: str) -> pd.DataFrame:
-    """Load CSV once and cache in memory"""
-    global _CSV_CACHE, _CSV_CACHE_PATH
+    """Load CSV once and cache in memory with product index"""
+    global _CSV_CACHE, _CSV_CACHE_PATH, _PRODUCT_INDEX
     
     if _CSV_CACHE is not None and _CSV_CACHE_PATH == csv_path:
         return _CSV_CACHE
@@ -28,19 +32,38 @@ def _get_cached_csv(csv_path: str) -> pd.DataFrame:
         return pd.DataFrame()
     
     print(f"📂 Loading CSV (one-time)... {csv_path}")
-    raw = pd.read_csv(csv_path)
+    raw = pd.read_csv(csv_path, dtype={"product_id": str})
     raw["review_date"] = pd.to_datetime(raw.get("review_date"), errors="coerce")
     raw = _normalize_df(raw)
+    
+    # Build product_id index for O(1) lookups
+    print("🔧 Building product index...")
+    _PRODUCT_INDEX = raw.groupby("product_id").groups
+    
     _CSV_CACHE = raw
     _CSV_CACHE_PATH = csv_path
-    print(f"✅ CSV loaded: {len(raw):,} reviews cached")
+    print(f"✅ CSV loaded: {len(raw):,} reviews, {len(_PRODUCT_INDEX):,} products indexed")
     return _CSV_CACHE
+
+
+def _get_reviews_by_product_id(product_id: str) -> pd.DataFrame:
+    """Fast O(1) lookup using pre-built index"""
+    global _PRODUCT_INDEX, _CSV_CACHE
+    
+    if _PRODUCT_INDEX is None or _CSV_CACHE is None:
+        return pd.DataFrame()
+    
+    if product_id not in _PRODUCT_INDEX:
+        return pd.DataFrame()
+    
+    indices = _PRODUCT_INDEX[product_id]
+    return _CSV_CACHE.iloc[indices].copy()
 
 
 def load_amazon_electronics(path: str) -> pd.DataFrame:
     """Load and normalize Amazon Electronics Reviews dataset"""
     try:
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, dtype={"asin": str, "product_id": str})
 
         # Normalize column names
         col_map = {
@@ -71,7 +94,7 @@ def load_amazon_electronics(path: str) -> pd.DataFrame:
 def load_datafiniti(path: str) -> pd.DataFrame:
     """Load and normalize Datafiniti Amazon Reviews dataset"""
     try:
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, dtype={"id": str, "product_id": str})
 
         col_map = {
             "id": "product_id",
@@ -145,23 +168,25 @@ def get_reviews_for_product(product_id: str, csv_path: str = CSV_PATH) -> tuple:
     Returns (DataFrame, source_info_dict)
     Recent reviews from CSV weighted 2x
     Historical from DB weighted 1x
+    
+    Uses O(1) indexed lookup for fast retrieval
     """
     from database import get_historical_reviews
 
     cutoff = datetime.now() - timedelta(days=RECENT_MONTHS * 30)
 
-    # --- CSV DATA (cached, all time periods) ---
+    # --- CSV DATA (O(1) indexed lookup) ---
     csv_df = pd.DataFrame()
-    cached = _get_cached_csv(csv_path)
-    if not cached.empty:
-        try:
-            csv_df = cached[cached["product_id"] == product_id].copy()
-            # Weight recent reviews higher than older ones
-            csv_df["weight"] = csv_df["review_date"].apply(
-                lambda d: RECENT_WEIGHT if pd.notna(d) and d >= cutoff else HISTORICAL_WEIGHT
-            )
-        except Exception as e:
-            print(f"CSV filter warning: {e}")
+    _get_cached_csv(csv_path)  # Ensure cache is loaded
+    csv_df = _get_reviews_by_product_id(product_id)
+    
+    if not csv_df.empty:
+        # Vectorized weight calculation (much faster than apply)
+        csv_df["weight"] = np.where(
+            csv_df["review_date"].notna() & (csv_df["review_date"] >= cutoff),
+            RECENT_WEIGHT,
+            HISTORICAL_WEIGHT
+        )
 
     # --- COLD DATA: PostgreSQL (older than 6 months) ---
     historical_df = pd.DataFrame()
