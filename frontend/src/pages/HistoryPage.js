@@ -115,7 +115,7 @@ export default function HistoryPage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tristha-${activeTab}-history-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `synthetix-${activeTab}-history-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -156,7 +156,7 @@ export default function HistoryPage() {
                 fontWeight: 800,
                 fontSize: 18
               }}>T</div>
-              <span style={{ fontSize: 18, fontWeight: 700 }}>Tristha Market</span>
+              <span style={{ fontSize: 18, fontWeight: 700 }}>Synthetix Market</span>
             </div>
             <span style={{ color: '#1e293b' }}>|</span>
             <span style={{ color: '#64748b', fontSize: 14 }}>Transaction History</span>
@@ -177,7 +177,7 @@ export default function HistoryPage() {
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{currentUser?.name || 'Guest'}</div>
-              <div style={{ fontSize: 11, color: '#64748b' }}>{currentUser?.email || 'guest@tristha.com'}</div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>{currentUser?.email || 'guest@synthetix.com'}</div>
             </div>
             <button
               onClick={() => navigate('/marketplace')}

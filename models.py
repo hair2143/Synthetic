@@ -99,7 +99,7 @@ class InsightsResponse(BaseModel):
     confidence: ConfidenceDetail
     review_quality_audit: ReviewAudit
     summary: str
-    tristha_qa_badge: str
+    synthetix_qa_badge: str
     cache_status: Optional[str] = "miss"
 
 

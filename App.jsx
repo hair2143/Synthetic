@@ -33,7 +33,7 @@ const MOCK_DATA = {
   confidence: { score: 0.87, level: "HIGH ✅", reasons: { review_count: "very high (2244 reviews)", recency: "strong (423 recent reviews)", agreement: "82% consistent sentiment", coverage: "5 of 5 aspects have sufficient data" } },
   review_quality_audit: { total_reviews: 2244, non_english_filtered: 134, suspected_fake: 43, low_quality: 89, used_in_analysis: 1978, verified_purchases: 1654, audit_confidence: "HIGH ✅" },
   summary: "Based on 2244 reviews (1654 verified purchases) customers particularly appreciate battery life while raising consistent concerns about build quality. Notably, battery life sentiment has declined recently. These insights carry HIGH confidence.",
-  tristha_qa_badge: "✅ All insights validated, tested and certified — zero fabrication",
+  synthetix_qa_badge: "✅ All insights validated, tested and certified — zero fabrication",
   cache_status: "miss"
 };
 
@@ -171,7 +171,7 @@ export default function App() {
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-sm font-bold">T</div>
             <div>
               <p className="font-semibold text-sm">Review Insights API</p>
-              <p className="text-xs text-gray-500">Tristha QA Hackathon — Product Intelligence</p>
+              <p className="text-xs text-gray-500">Synthetix QA Hackathon — Product Intelligence</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -234,7 +234,7 @@ export default function App() {
           <>
             {/* QA Badge */}
             <div className="bg-green-950/30 border border-green-800 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
-              <p className="text-sm text-green-400">{data.tristha_qa_badge}</p>
+              <p className="text-sm text-green-400">{data.synthetix_qa_badge}</p>
               <span className="text-xs text-gray-500">Cache: {data.cache_status} · {data.product_meta.category}</span>
             </div>
 

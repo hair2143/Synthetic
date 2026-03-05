@@ -229,7 +229,7 @@ export default function InsightsPage() {
               <div onClick={() => navigate('/marketplace')} style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #818cf8)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>T</div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>Review Insights</div>
-                <div style={{ fontSize: 11, color: "#475569" }}>Tristha Market · QA-Grade Intelligence</div>
+                <div style={{ fontSize: 11, color: "#475569" }}>Synthetix Market · QA-Grade Intelligence</div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -251,7 +251,7 @@ export default function InsightsPage() {
           {/* Search */}
           <Card style={{ padding: "28px 32px", marginBottom: 28 }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px" }}>Product Review Intelligence</h1>
-            <p style={{ fontSize: 13, color: "#475569", margin: "0 0 20px" }}>Every insight validated, tested & certified · Zero fabrication · That's Tristha thinking.</p>
+            <p style={{ fontSize: 13, color: "#475569", margin: "0 0 20px" }}>Every insight validated, tested & certified · Zero fabrication · That's Synthetix thinking.</p>
 
             {apiOnline === false && (
               <div style={{ marginBottom: 16, padding: "12px 16px", background: "#f43f5e15", border: "1px solid #f43f5e40", borderRadius: 10, display: "flex", alignItems: "center", gap: 10 }}>
@@ -323,7 +323,7 @@ export default function InsightsPage() {
             <>
               {/* QA Badge */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#064e3b20", border: "1px solid #10b98140", borderRadius: 12, padding: "10px 18px", marginBottom: 20 }}>
-                <span style={{ fontSize: 13, color: "#10b981", fontWeight: 600 }}>{data.tristha_qa_badge}</span>
+                <span style={{ fontSize: 13, color: "#10b981", fontWeight: 600 }}>{data.synthetix_qa_badge}</span>
                 <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#475569" }}>
                   <span style={{ color: data.cache_status?.includes("hit") ? "#10b981" : "#f59e0b" }}>
                     {data.cache_status?.includes("memory") ? "⚡ Memory" : data.cache_status?.includes("db") ? "💾 DB Cache" : "🔄 Fresh"} 

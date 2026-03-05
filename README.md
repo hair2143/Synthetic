@@ -1,5 +1,5 @@
 # 🔍 Product Review Insights API
-> A QA tool for customer reviews — validating, testing and certifying every insight. Built for Tristha Hackathon.
+> A QA tool for customer reviews — validating, testing and certifying every insight. Built for Synthetix Hackathon.
 
 ---
 
@@ -7,7 +7,7 @@
 
 Takes a product ID → reads thousands of reviews → returns **evidence-backed insights** with zero hallucination.
 
-Every pro and con is proven by real review quotes. No AI invention. No fabrication. That's Tristha thinking.
+Every pro and con is proven by real review quotes. No AI invention. No fabrication. That's Synthetix thinking.
 
 ---
 
@@ -41,8 +41,8 @@ Every pro and con is proven by real review quotes. No AI invention. No fabricati
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/yourname/tristha-review-api
-cd tristha-review-api
+git clone https://github.com/yourname/synthetix-review-api
+cd synthetix-review-api
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
@@ -58,7 +58,7 @@ cp .env.example .env
 
 ```bash
 # Create PostgreSQL database
-psql -U postgres -c "CREATE DATABASE tristha_reviews;"
+psql -U postgres -c "CREATE DATABASE synthetix_reviews;"
 
 # Tables are auto-created on first startup
 ```
@@ -123,7 +123,7 @@ curl http://localhost:8000/api/v1/insights/B07XJ8C8F5
     }
   ],
   "confidence": { "score": 0.87, "level": "HIGH ✅" },
-  "tristha_qa_badge": "✅ All insights validated, tested and certified — zero fabrication"
+  "synthetix_qa_badge": "✅ All insights validated, tested and certified — zero fabrication"
 }
 ```
 
@@ -225,7 +225,7 @@ CSV (last 6 months)     PostgreSQL (6mo+)
 | `review_quality_audit` | How many reviews were verified/filtered |
 | `data_sources` | Which data came from CSV vs PostgreSQL |
 | `summary` | Plain English summary of findings |
-| `tristha_qa_badge` | QA certification stamp |
+| `synthetix_qa_badge` | QA certification stamp |
 
 ---
 
@@ -241,4 +241,4 @@ CSV (last 6 months)     PostgreSQL (6mo+)
 
 ---
 
-*Built for Tristha Hackathon — QA thinking applied to customer intelligence.*
+*Built for Synthetix Hackathon — QA thinking applied to customer intelligence.*

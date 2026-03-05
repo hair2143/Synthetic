@@ -53,37 +53,37 @@ const RECENT_REVIEWS = [
 export function AppProvider({ children }) {
   // User state
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('tristhaUser');
+    const saved = localStorage.getItem('synthetixUser');
     return saved ? JSON.parse(saved) : null;
   });
 
   // Cart state
   const [cart, setCart] = useState(() => {
-    const saved = localStorage.getItem('tristhaCart');
+    const saved = localStorage.getItem('synthetixCart');
     return saved ? JSON.parse(saved) : [];
   });
 
   // Products state (marketplace listings)
   const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem('tristhaProducts');
+    const saved = localStorage.getItem('synthetixProducts');
     return saved ? JSON.parse(saved) : SAMPLE_PRODUCTS;
   });
 
   // User's listed products
   const [listedProducts, setListedProducts] = useState(() => {
-    const saved = localStorage.getItem('tristhaListed');
+    const saved = localStorage.getItem('synthetixListed');
     return saved ? JSON.parse(saved) : [];
   });
 
   // User's purchased products
   const [purchasedProducts, setPurchasedProducts] = useState(() => {
-    const saved = localStorage.getItem('tristhaPurchased');
+    const saved = localStorage.getItem('synthetixPurchased');
     return saved ? JSON.parse(saved) : [];
   });
 
   // Reviews submitted by user
   const [userReviews, setUserReviews] = useState(() => {
-    const saved = localStorage.getItem('tristhaReviews');
+    const saved = localStorage.getItem('synthetixReviews');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -96,36 +96,36 @@ export function AppProvider({ children }) {
   // Persist to localStorage
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('tristhaUser', JSON.stringify(currentUser));
+      localStorage.setItem('synthetixUser', JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem('tristhaUser');
+      localStorage.removeItem('synthetixUser');
     }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('tristhaCart', JSON.stringify(cart));
+    localStorage.setItem('synthetixCart', JSON.stringify(cart));
   }, [cart]);
 
   useEffect(() => {
-    localStorage.setItem('tristhaProducts', JSON.stringify(products));
+    localStorage.setItem('synthetixProducts', JSON.stringify(products));
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('tristhaListed', JSON.stringify(listedProducts));
+    localStorage.setItem('synthetixListed', JSON.stringify(listedProducts));
   }, [listedProducts]);
 
   useEffect(() => {
-    localStorage.setItem('tristhaPurchased', JSON.stringify(purchasedProducts));
+    localStorage.setItem('synthetixPurchased', JSON.stringify(purchasedProducts));
   }, [purchasedProducts]);
 
   useEffect(() => {
-    localStorage.setItem('tristhaReviews', JSON.stringify(userReviews));
+    localStorage.setItem('synthetixReviews', JSON.stringify(userReviews));
   }, [userReviews]);
 
   // Auth functions
   const login = (email, password, remember) => {
     // Admin login
-    if (email === 'admin@tristha.com' && password === 'admin123') {
+    if (email === 'admin@synthetix.com' && password === 'admin123') {
       const adminUser = { name: 'Admin', email, role: 'admin' };
       setCurrentUser(adminUser);
       return { success: true, isAdmin: true };
@@ -144,11 +144,11 @@ export function AppProvider({ children }) {
 
   const logout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('tristhaUser');
+    localStorage.removeItem('synthetixUser');
   };
 
   const continueAsGuest = () => {
-    const guest = { name: 'Guest', email: 'guest@tristha.com', role: 'guest' };
+    const guest = { name: 'Guest', email: 'guest@synthetix.com', role: 'guest' };
     setCurrentUser(guest);
   };
 
@@ -334,9 +334,12 @@ export function AppProvider({ children }) {
   // Recent reviews for ticker
   const getRecentReviews = () => RECENT_REVIEWS;
 
+  const isAuthenticated = currentUser !== null;
+
   const value = {
     // User
     currentUser,
+    isAuthenticated,
     login,
     register,
     logout,

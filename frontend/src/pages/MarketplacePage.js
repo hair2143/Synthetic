@@ -49,7 +49,7 @@ const StarRating = ({ rating, size = 14 }) => (
 
 const VerifiedBadge = ({ verifiedPct }) => {
   if (verifiedPct >= 0.7) {
-    return <span style={{ fontSize: 11, color: '#10b981' }}>🛡️ Tristha Verified</span>;
+    return <span style={{ fontSize: 11, color: '#10b981' }}>🛡️ Synthetix Verified</span>;
   } else if (verifiedPct < 0.3) {
     return <span style={{ fontSize: 11, color: '#f59e0b' }}>⚠️ Unverified Seller</span>;
   }
@@ -103,7 +103,9 @@ export default function MarketplacePage() {
     price: '',
     description: '',
     reviews: '',
-    condition: 'New'
+    condition: 'New',
+    defaultRating: 4,
+    image: null
   });
 
   // Review ticker
@@ -183,7 +185,7 @@ export default function MarketplacePage() {
     listProduct({
       ...sellForm,
       price: parseInt(sellForm.price),
-      image: null
+      image: sellForm.image
     });
     
     setSellForm({
@@ -193,7 +195,9 @@ export default function MarketplacePage() {
       price: '',
       description: '',
       reviews: '',
-      condition: 'New'
+      condition: 'New',
+      defaultRating: 4,
+      image: null
     });
     setShowSellModal(false);
   };
@@ -267,7 +271,7 @@ export default function MarketplacePage() {
               fontWeight: 800,
               fontSize: 18
             }}>T</div>
-            <span style={{ fontSize: 18, fontWeight: 700 }}>Tristha Market</span>
+            <span style={{ fontSize: 18, fontWeight: 700 }}>Synthetix Market</span>
           </div>
 
           {/* Search */}
@@ -488,8 +492,8 @@ export default function MarketplacePage() {
               <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 8 }}>
                 Minimum Rating
               </label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[0, 3, 4, 4.5].map(r => (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {[0, 1, 2, 3, 4, 5].map(r => (
                   <button
                     key={r}
                     onClick={() => setRatingFilter(r)}
@@ -500,10 +504,13 @@ export default function MarketplacePage() {
                       borderRadius: 8,
                       fontSize: 12,
                       color: ratingFilter === r ? '#fff' : '#64748b',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
                     }}
                   >
-                    {r === 0 ? 'All' : `${r}+`}
+                    {r === 0 ? 'All' : <><span style={{ color: '#f59e0b' }}>{'★'.repeat(r)}</span></>}
                   </button>
                 ))}
               </div>
@@ -647,7 +654,7 @@ export default function MarketplacePage() {
               </h2>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
               {filteredProducts.map(p => (
                 <Card key={p.id} style={{ display: 'flex', flexDirection: 'column' }}>
                   {/* Product Image Placeholder */}
@@ -1039,6 +1046,64 @@ export default function MarketplacePage() {
                     resize: 'vertical'
                   }}
                 />
+              </div>
+
+              {/* Default Star Rating for Reviews */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 6 }}>
+                  Default Star Rating for Reviews
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setSellForm({ ...sellForm, defaultRating: star })}
+                      style={{
+                        padding: '8px 16px',
+                        background: sellForm.defaultRating >= star ? '#f59e0b20' : '#020818',
+                        border: `1px solid ${sellForm.defaultRating >= star ? '#f59e0b' : '#1e293b'}`,
+                        borderRadius: 8,
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        color: sellForm.defaultRating >= star ? '#f59e0b' : '#1e293b'
+                      }}
+                    >
+                      ★
+                    </button>
+                  ))}
+                  <span style={{ fontSize: 12, color: '#64748b', alignSelf: 'center', marginLeft: 8 }}>
+                    ({sellForm.defaultRating} star{sellForm.defaultRating !== 1 ? 's' : ''})
+                  </span>
+                </div>
+              </div>
+
+              {/* Image Upload Placeholder */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 6 }}>
+                  Product Image (optional)
+                </label>
+                <div 
+                  style={{
+                    width: '100%',
+                    height: 120,
+                    background: '#020818',
+                    border: '2px dashed #1e293b',
+                    borderRadius: 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#6366f1'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = '#1e293b'}
+                >
+                  <span style={{ fontSize: 32, marginBottom: 8 }}>📷</span>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>Click to upload image</span>
+                  <span style={{ fontSize: 10, color: '#475569' }}>PNG, JPG up to 5MB</span>
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: 12 }}>

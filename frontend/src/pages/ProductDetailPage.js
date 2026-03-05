@@ -302,7 +302,7 @@ export default function ProductDetailPage() {
                 fontWeight: 800,
                 fontSize: 18
               }}>T</div>
-              <span style={{ fontSize: 18, fontWeight: 700 }}>Tristha Market</span>
+              <span style={{ fontSize: 18, fontWeight: 700 }}>Synthetix Market</span>
             </div>
             <span style={{ color: '#1e293b' }}>|</span>
             <span style={{ color: '#64748b', fontSize: 14 }}>Product Details</span>
@@ -376,7 +376,7 @@ export default function ProductDetailPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                     <SentimentBadge sentiment={product.sentiment} />
                     {product.verifiedPct >= 0.7 && (
-                      <span style={{ fontSize: 12, color: '#10b981' }}>🛡️ Tristha Verified</span>
+                      <span style={{ fontSize: 12, color: '#10b981' }}>🛡️ Synthetix Verified</span>
                     )}
                   </div>
                   
@@ -450,7 +450,7 @@ export default function ProductDetailPage() {
                 <Card style={{ marginBottom: 24 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#818cf8' }}>DESCRIPTION</h3>
                   <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>
-                    {product.description || `This ${product.category.toLowerCase()} product has received ${product.reviewCount.toLocaleString()} reviews from verified buyers, with an average rating of ${product.avgRating.toFixed(1)} out of 5 stars. ${product.verifiedPct >= 0.7 ? 'This product is Tristha Verified, meaning over 70% of its reviews are from verified purchases.' : ''}`}
+                    {product.description || `This ${product.category.toLowerCase()} product has received ${product.reviewCount.toLocaleString()} reviews from verified buyers, with an average rating of ${product.avgRating.toFixed(1)} out of 5 stars. ${product.verifiedPct >= 0.7 ? 'This product is Synthetix Verified, meaning over 70% of its reviews are from verified purchases.' : ''}`}
                   </p>
                 </Card>
 

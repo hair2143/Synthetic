@@ -35,13 +35,18 @@ export default function LoginPage() {
     setTimeout(() => {
       const result = login(loginEmail, loginPassword, rememberMe);
       if (result.success) {
-        if (result.isAdmin) {
-          navigate('/admin');
-        } else {
-          navigate('/marketplace');
-        }
+        // Small delay to ensure state propagates before navigation
+        setTimeout(() => {
+          if (result.isAdmin) {
+            navigate('/admin');
+          } else {
+            navigate('/marketplace');
+          }
+          setLoading(false);
+        }, 100);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     }, 800);
   };
 
@@ -71,15 +76,19 @@ export default function LoginPage() {
     setTimeout(() => {
       const result = register(regName, regEmail, regPassword);
       if (result.success) {
-        navigate('/marketplace');
+        setTimeout(() => {
+          navigate('/marketplace');
+          setLoading(false);
+        }, 100);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     }, 800);
   };
 
   const handleGuest = () => {
     continueAsGuest();
-    navigate('/marketplace');
+    setTimeout(() => navigate('/marketplace'), 100);
   };
 
   const inputStyle = {
@@ -141,7 +150,7 @@ export default function LoginPage() {
             color: '#fff'
           }}>T</div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#e2e8f0' }}>Tristha Market</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#e2e8f0' }}>Synthetix Market</div>
             <div style={{ fontSize: 12, color: '#475569' }}>AI-Powered Review Intelligence</div>
           </div>
         </div>
@@ -332,7 +341,7 @@ export default function LoginPage() {
 
         {/* Admin hint */}
         <p style={{ fontSize: 11, color: '#334155', marginTop: 20, textAlign: 'center' }}>
-          Admin access: admin@tristha.com / admin123
+          Admin access: admin@synthetix.com / admin123
         </p>
       </div>
 

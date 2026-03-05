@@ -39,7 +39,7 @@ CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", 7200))
 
 app = FastAPI(
     title="Product Review Insights API",
-    description="QA-grade customer review analysis — validating, testing and certifying every insight. Built for Tristha Hackathon.",
+    description="QA-grade customer review analysis — validating, testing and certifying every insight. Built for Synthetix Hackathon.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -159,7 +159,7 @@ def get_insights(
         "confidence": confidence,
         "review_quality_audit": audit,
         "summary": summary,
-        "tristha_qa_badge": "✅ All insights validated, tested and certified — zero fabrication",
+        "synthetix_qa_badge": "✅ All insights validated, tested and certified — zero fabrication",
         "cache_status": "miss"
     }
 
