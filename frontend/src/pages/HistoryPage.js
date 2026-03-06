@@ -15,28 +15,117 @@ const Card = ({ children, style = {} }) => (
   </div>
 );
 
-const StarRating = ({ rating, size = 12 }) => (
-  <div style={{ display: 'flex', gap: 1 }}>
-    {[1, 2, 3, 4, 5].map(i => (
-      <span key={i} style={{ fontSize: size, color: i <= rating ? '#f59e0b' : '#1e293b' }}>★</span>
-    ))}
-  </div>
-);
+const StarRating = ({ rating, interactive, onRatingChange, size = 14 }) => {
+  const [hoverRating, setHoverRating] = useState(0);
+  
+  return (
+    <div style={{ display: 'flex', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <span
+          key={i}
+          onClick={() => interactive && onRatingChange?.(i)}
+          onMouseEnter={() => interactive && setHoverRating(i)}
+          onMouseLeave={() => interactive && setHoverRating(0)}
+          style={{
+            fontSize: size,
+            color: i <= (hoverRating || rating) ? '#f59e0b' : '#1e293b',
+            cursor: interactive ? 'pointer' : 'default',
+            transition: 'color 0.2s'
+          }}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+};
+
+const StatusBadge = ({ status }) => {
+  const config = {
+    'Active': { color: '#10b981', bg: '#10b98115', icon: '✓' },
+    'Sold': { color: '#6366f1', bg: '#6366f115', icon: '💰' },
+    'Expired': { color: '#64748b', bg: '#64748b15', icon: '⏰' }
+  };
+  const c = config[status] || config['Active'];
+  return (
+    <span style={{
+      padding: '4px 10px',
+      background: c.bg,
+      border: `1px solid ${c.color}30`,
+      borderRadius: 99,
+      fontSize: 11,
+      color: c.color,
+      fontWeight: 600,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 4
+    }}>
+      {c.icon} {status}
+    </span>
+  );
+};
 
 export default function HistoryPage() {
   const navigate = useNavigate();
-  const { currentUser, purchases, soldItems, logout } = useApp();
+  const { 
+    currentUser, 
+    purchasedProducts, 
+    listedProducts,
+    userReviews,
+    showToast,
+    submitReview
+  } = useApp();
 
   const [activeTab, setActiveTab] = useState('bought');
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Review modal state
+  const [reviewModal, setReviewModal] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+
+  // Add mock data if no real data exists
+  const soldItems = useMemo(() => {
+    if (listedProducts.length > 0) return listedProducts;
+    // Generate mock sold items for demo
+    return [
+      { id: 'SOLD001', name: 'Sony WH-1000XM4', category: 'Audio', price: 24990, listedAt: '2026-02-15T10:00:00Z', views: 342, status: 'Active' },
+      { id: 'SOLD002', name: 'MacBook Pro 14"', category: 'Electronics', price: 189900, listedAt: '2026-01-20T10:00:00Z', views: 128, status: 'Sold' },
+      { id: 'SOLD003', name: 'iPad Air 5', category: 'Electronics', price: 54900, listedAt: '2026-01-10T10:00:00Z', views: 89, status: 'Active' },
+      { id: 'SOLD004', name: 'Logitech MX Master 3', category: 'Electronics', price: 8995, listedAt: '2025-12-01T10:00:00Z', views: 456, status: 'Expired' },
+      { id: 'SOLD005', name: 'Apple AirPods Pro', category: 'Audio', price: 22900, listedAt: '2026-02-28T10:00:00Z', views: 67, status: 'Active' },
+    ];
+  }, [listedProducts]);
+
+  const boughtItems = useMemo(() => {
+    if (purchasedProducts.length > 0) return purchasedProducts;
+    // Generate mock bought items for demo
+    return [
+      { id: 'B07XJ8C8F5', name: 'Bose QuietComfort 45', category: 'Audio', price: 27990, purchasedAt: '2026-03-01T10:00:00Z', reviewed: true, myRating: 5 },
+      { id: 'B09V3KXJPB', name: 'Apple Watch Series 8', category: 'Wearables', price: 45900, purchasedAt: '2026-02-20T10:00:00Z', reviewed: false, myRating: null },
+      { id: 'B08N5WRWNW', name: 'Anker PowerCore 26800', category: 'Electronics', price: 3999, purchasedAt: '2026-02-10T10:00:00Z', reviewed: true, myRating: 4 },
+      { id: 'B07Q5NHVCQ', name: 'Samsung Galaxy Buds Pro', category: 'Audio', price: 13990, purchasedAt: '2026-01-25T10:00:00Z', reviewed: false, myRating: null },
+      { id: 'B0BSHF7WHW', name: 'JBL Flip 6 Speaker', category: 'Audio', price: 9999, purchasedAt: '2026-01-15T10:00:00Z', reviewed: true, myRating: 3 },
+    ];
+  }, [purchasedProducts]);
+
+  // Check if user has reviewed a product
+  const hasReviewed = (productId) => {
+    return userReviews.some(r => r.productId === productId);
+  };
+
+  // Get user's rating for a product
+  const getUserRating = (productId) => {
+    const review = userReviews.find(r => r.productId === productId);
+    return review?.rating || null;
+  };
 
   // Get filtered and sorted items
   const filteredItems = useMemo(() => {
-    const items = activeTab === 'bought' ? purchases : soldItems;
+    const items = activeTab === 'bought' ? boughtItems : soldItems;
     let filtered = [...items];
 
     // Search filter
@@ -44,25 +133,17 @@ export default function HistoryPage() {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(item => 
         item.name?.toLowerCase().includes(q) ||
-        item.productId?.toLowerCase().includes(q)
+        item.id?.toLowerCase().includes(q)
       );
-    }
-
-    // Date filter
-    const now = new Date();
-    if (dateFilter !== 'all') {
-      const days = dateFilter === '7d' ? 7 : dateFilter === '30d' ? 30 : 90;
-      const cutoff = new Date(now.setDate(now.getDate() - days));
-      filtered = filtered.filter(item => new Date(item.date) >= cutoff);
     }
 
     // Sort
     switch (sortBy) {
       case 'newest':
-        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        filtered.sort((a, b) => new Date(b.purchasedAt || b.listedAt) - new Date(a.purchasedAt || a.listedAt));
         break;
       case 'oldest':
-        filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+        filtered.sort((a, b) => new Date(a.purchasedAt || a.listedAt) - new Date(b.purchasedAt || b.listedAt));
         break;
       case 'price-high':
         filtered.sort((a, b) => b.price - a.price);
@@ -75,7 +156,7 @@ export default function HistoryPage() {
     }
 
     return filtered;
-  }, [activeTab, purchases, soldItems, searchQuery, dateFilter, sortBy]);
+  }, [activeTab, boughtItems, soldItems, searchQuery, sortBy]);
 
   // Pagination
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -86,31 +167,44 @@ export default function HistoryPage() {
 
   // Stats
   const stats = useMemo(() => {
-    const bought = purchases.reduce((sum, p) => sum + (p.price * (p.quantity || 1)), 0);
-    const sold = soldItems.reduce((sum, s) => sum + s.price, 0);
+    const bought = boughtItems.reduce((sum, p) => sum + p.price, 0);
+    const sold = soldItems.filter(s => s.status === 'Sold').reduce((sum, s) => sum + s.price, 0);
+    const activeListings = soldItems.filter(s => s.status === 'Active').length;
     return {
-      totalBought: purchases.length,
+      totalBought: boughtItems.length,
       totalSpent: bought,
       totalSold: soldItems.length,
-      totalEarned: sold,
-      netBalance: sold - bought
+      activeListings,
+      totalEarned: sold
     };
-  }, [purchases, soldItems]);
+  }, [boughtItems, soldItems]);
 
   // Export CSV
   const exportCSV = () => {
-    const items = activeTab === 'bought' ? purchases : soldItems;
-    const headers = ['Date', 'Product Name', 'Product ID', 'Price', 'Quantity', 'Total'];
-    const rows = items.map(item => [
-      new Date(item.date).toLocaleDateString(),
-      item.name,
-      item.productId,
-      item.price,
-      item.quantity || 1,
-      item.price * (item.quantity || 1)
-    ]);
+    let headers, rows;
+    
+    if (activeTab === 'sold') {
+      headers = ['Product Name', 'Product ID', 'Price', 'Date Listed', 'Views', 'Status'];
+      rows = soldItems.map(item => [
+        item.name,
+        item.id,
+        item.price,
+        new Date(item.listedAt).toLocaleDateString(),
+        item.views || 0,
+        item.status || 'Active'
+      ]);
+    } else {
+      headers = ['Product Name', 'Product ID', 'Price', 'Date Purchased', 'My Rating'];
+      rows = boughtItems.map(item => [
+        item.name,
+        item.id,
+        item.price,
+        new Date(item.purchasedAt).toLocaleDateString(),
+        getUserRating(item.id) || item.myRating || 'Not rated'
+      ]);
+    }
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -118,6 +212,26 @@ export default function HistoryPage() {
     a.download = `synthetix-${activeTab}-history-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  // Submit review handler
+  const handleSubmitReview = () => {
+    if (reviewText.trim().length < 20) {
+      showToast('Review must be at least 20 characters', 'error');
+      return;
+    }
+    
+    submitReview(reviewModal.id, {
+      rating: reviewRating,
+      text: reviewText,
+      author: currentUser?.name || 'Anonymous',
+      verified: true
+    });
+    
+    showToast('Review submitted successfully!', 'success');
+    setReviewModal(null);
+    setReviewText('');
+    setReviewRating(5);
   };
 
   return (
@@ -134,7 +248,7 @@ export default function HistoryPage() {
         padding: '14px 24px'
       }}>
         <div style={{
-          maxWidth: 1200,
+          maxWidth: 1400,
           margin: '0 auto',
           display: 'flex',
           alignItems: 'center',
@@ -155,11 +269,11 @@ export default function HistoryPage() {
                 justifyContent: 'center',
                 fontWeight: 800,
                 fontSize: 18
-              }}>T</div>
+              }}>S</div>
               <span style={{ fontSize: 18, fontWeight: 700 }}>Synthetix Market</span>
             </div>
             <span style={{ color: '#1e293b' }}>|</span>
-            <span style={{ color: '#64748b', fontSize: 14 }}>Transaction History</span>
+            <span style={{ color: '#64748b', fontSize: 14 }}>My History</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{
@@ -198,11 +312,11 @@ export default function HistoryPage() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
+      <main style={{ maxWidth: 1400, margin: '0 auto', padding: '32px 24px' }}>
         {/* Page Title */}
         <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>📋 Transaction History</h1>
-          <p style={{ color: '#64748b' }}>View and manage your purchase and sales history</p>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>📋 My History</h1>
+          <p style={{ color: '#64748b' }}>View your sales and purchase history</p>
         </div>
 
         {/* Stats Cards */}
@@ -216,42 +330,21 @@ export default function HistoryPage() {
             <div style={{ fontSize: 24, fontWeight: 800, color: '#f43f5e' }}>₹{stats.totalSpent.toLocaleString()}</div>
           </Card>
           <Card>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Items Sold</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Items Listed</div>
             <div style={{ fontSize: 24, fontWeight: 800 }}>{stats.totalSold}</div>
           </Card>
           <Card>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Total Earned</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981' }}>₹{stats.totalEarned.toLocaleString()}</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Active Listings</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981' }}>{stats.activeListings}</div>
           </Card>
           <Card>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Net Balance</div>
-            <div style={{ 
-              fontSize: 24, 
-              fontWeight: 800, 
-              color: stats.netBalance >= 0 ? '#10b981' : '#f43f5e' 
-            }}>
-              {stats.netBalance >= 0 ? '+' : ''}₹{stats.netBalance.toLocaleString()}
-            </div>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Total Earned</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#6366f1' }}>₹{stats.totalEarned.toLocaleString()}</div>
           </Card>
         </div>
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          <button
-            onClick={() => { setActiveTab('bought'); setCurrentPage(1); }}
-            style={{
-              padding: '12px 24px',
-              background: activeTab === 'bought' ? '#6366f1' : '#0f172a',
-              border: `1px solid ${activeTab === 'bought' ? '#6366f1' : '#1e293b'}`,
-              borderRadius: 10,
-              fontSize: 14,
-              fontWeight: 600,
-              color: activeTab === 'bought' ? '#fff' : '#64748b',
-              cursor: 'pointer'
-            }}
-          >
-            🛒 Items Bought ({purchases.length})
-          </button>
           <button
             onClick={() => { setActiveTab('sold'); setCurrentPage(1); }}
             style={{
@@ -265,7 +358,22 @@ export default function HistoryPage() {
               cursor: 'pointer'
             }}
           >
-            💰 Items Sold ({soldItems.length})
+            💰 Items I Sold ({soldItems.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab('bought'); setCurrentPage(1); }}
+            style={{
+              padding: '12px 24px',
+              background: activeTab === 'bought' ? '#6366f1' : '#0f172a',
+              border: `1px solid ${activeTab === 'bought' ? '#6366f1' : '#1e293b'}`,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
+              color: activeTab === 'bought' ? '#fff' : '#64748b',
+              cursor: 'pointer'
+            }}
+          >
+            🛒 Items I Bought ({boughtItems.length})
           </button>
         </div>
 
@@ -273,11 +381,11 @@ export default function HistoryPage() {
         <Card style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             {/* Search */}
-            <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+            <div style={{ flex: 1, minWidth: 250, position: 'relative' }}>
               <input
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="Search by name or ID..."
+                placeholder="Search by product name or ID..."
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -292,26 +400,6 @@ export default function HistoryPage() {
               />
               <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}>🔍</span>
             </div>
-
-            {/* Date Filter */}
-            <select
-              value={dateFilter}
-              onChange={e => { setDateFilter(e.target.value); setCurrentPage(1); }}
-              style={{
-                padding: '10px 14px',
-                background: '#020818',
-                border: '1px solid #1e293b',
-                borderRadius: 10,
-                fontSize: 13,
-                color: '#e2e8f0',
-                outline: 'none'
-              }}
-            >
-              <option value="all">All Time</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="90d">Last 90 Days</option>
-            </select>
 
             {/* Sort */}
             <select
@@ -363,12 +451,12 @@ export default function HistoryPage() {
                 {activeTab === 'bought' ? '🛒' : '💰'}
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-                No {activeTab === 'bought' ? 'purchases' : 'sales'} yet
+                No {activeTab === 'bought' ? 'purchases' : 'listings'} yet
               </h3>
               <p style={{ color: '#64748b', marginBottom: 20 }}>
                 {activeTab === 'bought'
                   ? 'Items you purchase will appear here'
-                  : 'Items you sell will appear here'}
+                  : 'Items you list for sale will appear here'}
               </p>
               <button
                 onClick={() => navigate('/marketplace')}
@@ -388,41 +476,63 @@ export default function HistoryPage() {
             </div>
           ) : (
             <>
-              {/* Table Header */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: activeTab === 'bought' 
-                  ? '1fr 120px 100px 80px 100px 120px' 
-                  : '1fr 120px 100px 120px 100px',
-                padding: '14px 24px',
-                background: '#0f172a',
-                borderBottom: '1px solid #1e293b',
-                fontSize: 11,
-                color: '#64748b',
-                fontWeight: 600,
-                textTransform: 'uppercase'
-              }}>
-                <div>Product</div>
-                <div>Product ID</div>
-                <div>Price</div>
-                {activeTab === 'bought' && <div>Qty</div>}
-                <div>{activeTab === 'bought' ? 'Total' : 'Status'}</div>
-                <div>Date</div>
-              </div>
+              {/* Table Header - SOLD */}
+              {activeTab === 'sold' && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.5fr 120px 100px 120px 80px 100px 150px',
+                  padding: '14px 24px',
+                  background: '#0f172a',
+                  borderBottom: '1px solid #1e293b',
+                  fontSize: 11,
+                  color: '#64748b',
+                  fontWeight: 600,
+                  textTransform: 'uppercase'
+                }}>
+                  <div>Product Name</div>
+                  <div>Product ID</div>
+                  <div>Price</div>
+                  <div>Date Listed</div>
+                  <div>Views</div>
+                  <div>Status</div>
+                  <div>Actions</div>
+                </div>
+              )}
 
-              {/* Table Rows */}
-              {paginatedItems.map((item, idx) => (
+              {/* Table Header - BOUGHT */}
+              {activeTab === 'bought' && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.5fr 120px 100px 120px 100px 200px',
+                  padding: '14px 24px',
+                  background: '#0f172a',
+                  borderBottom: '1px solid #1e293b',
+                  fontSize: 11,
+                  color: '#64748b',
+                  fontWeight: 600,
+                  textTransform: 'uppercase'
+                }}>
+                  <div>Product Name</div>
+                  <div>Product ID</div>
+                  <div>Price</div>
+                  <div>Date Purchased</div>
+                  <div>My Rating</div>
+                  <div>Actions</div>
+                </div>
+              )}
+
+              {/* Table Rows - SOLD */}
+              {activeTab === 'sold' && paginatedItems.map((item, idx) => (
                 <div
                   key={idx}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: activeTab === 'bought' 
-                      ? '1fr 120px 100px 80px 100px 120px' 
-                      : '1fr 120px 100px 120px 100px',
+                    gridTemplateColumns: '1.5fr 120px 100px 120px 80px 100px 150px',
                     padding: '16px 24px',
                     borderBottom: '1px solid #1e293b',
                     alignItems: 'center',
-                    fontSize: 13
+                    fontSize: 13,
+                    transition: 'background 0.2s'
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = '#0f172a80'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -438,51 +548,129 @@ export default function HistoryPage() {
                       justifyContent: 'center',
                       fontSize: 18
                     }}>
-                      {item.category === 'Audio' ? '🎧' : item.category === 'Electronics' ? '💻' : '📦'}
+                      {item.category === 'Audio' ? '🎧' : item.category === 'Electronics' ? '💻' : item.category === 'Gaming' ? '🎮' : '📦'}
                     </div>
-                    <div>
-                      <div 
-                        onClick={() => navigate(`/product/${item.productId}`)}
-                        style={{ fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        {item.name}
-                      </div>
-                      {item.avgRating && <StarRating rating={Math.round(item.avgRating)} />}
-                    </div>
+                    <div style={{ fontWeight: 600 }}>{item.name}</div>
                   </div>
                   <div style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>
-                    {item.productId?.slice(0, 12)}...
+                    {item.id?.slice(0, 10)}...
                   </div>
-                  <div style={{ fontWeight: 600 }}>₹{item.price.toLocaleString()}</div>
-                  {activeTab === 'bought' && (
-                    <div style={{ color: '#64748b' }}>×{item.quantity || 1}</div>
-                  )}
-                  <div style={{ fontWeight: 700, color: '#10b981' }}>
-                    {activeTab === 'bought' 
-                      ? `₹${(item.price * (item.quantity || 1)).toLocaleString()}`
-                      : (
-                        <span style={{
-                          padding: '4px 10px',
-                          background: '#10b98115',
-                          border: '1px solid #10b98130',
-                          borderRadius: 99,
-                          fontSize: 11,
-                          color: '#10b981'
-                        }}>
-                          Completed
-                        </span>
-                      )
-                    }
-                  </div>
+                  <div style={{ fontWeight: 600, color: '#10b981' }}>₹{item.price.toLocaleString()}</div>
                   <div style={{ color: '#64748b', fontSize: 12 }}>
-                    {new Date(item.date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                    {new Date(item.listedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                  <div style={{ color: '#94a3b8' }}>
+                    👁 {item.views || Math.floor(Math.random() * 500)}
+                  </div>
+                  <div>
+                    <StatusBadge status={item.status || 'Active'} />
+                  </div>
+                  <div>
+                    <button
+                      onClick={() => navigate(`/insights/${item.id}`)}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#1e1b4b',
+                        border: '1px solid #4338ca',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        color: '#818cf8',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📊 View Insights
+                    </button>
                   </div>
                 </div>
               ))}
+
+              {/* Table Rows - BOUGHT */}
+              {activeTab === 'bought' && paginatedItems.map((item, idx) => {
+                const reviewed = hasReviewed(item.id) || item.reviewed;
+                const rating = getUserRating(item.id) || item.myRating;
+                
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1.5fr 120px 100px 120px 100px 200px',
+                      padding: '16px 24px',
+                      borderBottom: '1px solid #1e293b',
+                      alignItems: 'center',
+                      fontSize: 13,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#0f172a80'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 8,
+                        background: '#1e293b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 18
+                      }}>
+                        {item.category === 'Audio' ? '🎧' : item.category === 'Electronics' ? '💻' : item.category === 'Wearables' ? '⌚' : '📦'}
+                      </div>
+                      <div style={{ fontWeight: 600 }}>{item.name}</div>
+                    </div>
+                    <div style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>
+                      {item.id?.slice(0, 10)}...
+                    </div>
+                    <div style={{ fontWeight: 600, color: '#f43f5e' }}>₹{item.price.toLocaleString()}</div>
+                    <div style={{ color: '#64748b', fontSize: 12 }}>
+                      {new Date(item.purchasedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                    <div>
+                      {rating ? (
+                        <StarRating rating={rating} size={14} />
+                      ) : (
+                        <span style={{ color: '#64748b', fontSize: 11 }}>Not rated</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => navigate(`/insights/${item.id}`)}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#1e1b4b',
+                          border: '1px solid #4338ca',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          color: '#818cf8',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📊 Insights
+                      </button>
+                      {!reviewed && (
+                        <button
+                          onClick={() => setReviewModal(item)}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#10b98115',
+                            border: '1px solid #10b98130',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            color: '#10b981',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ✏️ Write Review
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -516,12 +704,11 @@ export default function HistoryPage() {
                       {Array.from({ length: totalPages }, (_, i) => i + 1)
                         .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                         .map((page, idx, arr) => (
-                          <>
+                          <span key={page}>
                             {idx > 0 && arr[idx - 1] !== page - 1 && (
-                              <span style={{ color: '#64748b' }}>...</span>
+                              <span style={{ color: '#64748b', marginRight: 4 }}>...</span>
                             )}
                             <button
-                              key={page}
                               onClick={() => setCurrentPage(page)}
                               style={{
                                 width: 32,
@@ -536,7 +723,7 @@ export default function HistoryPage() {
                             >
                               {page}
                             </button>
-                          </>
+                          </span>
                         ))}
                     </div>
                     <button
@@ -562,8 +749,133 @@ export default function HistoryPage() {
         </Card>
       </main>
 
+      {/* Review Modal */}
+      {reviewModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <Card style={{ width: 480, maxWidth: '90vw' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Write a Review</h3>
+              <button
+                onClick={() => setReviewModal(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: 20,
+                  color: '#64748b',
+                  cursor: 'pointer'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{reviewModal.name}</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Product ID: {reviewModal.id}</div>
+            </div>
+
+            {/* Verified Purchase Badge */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              background: '#10b98115',
+              border: '1px solid #10b98130',
+              borderRadius: 99,
+              fontSize: 11,
+              color: '#10b981',
+              fontWeight: 600,
+              marginBottom: 20
+            }}>
+              ✓ Verified Purchase
+            </div>
+            
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 8 }}>Your Rating</label>
+              <StarRating 
+                rating={reviewRating} 
+                interactive 
+                onRatingChange={setReviewRating}
+                size={28}
+              />
+            </div>
+            
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 8 }}>Your Review (min 20 chars)</label>
+              <textarea
+                value={reviewText}
+                onChange={e => setReviewText(e.target.value)}
+                placeholder="Share your experience with this product..."
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  background: '#020818',
+                  border: '1px solid #1e293b',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  color: '#e2e8f0',
+                  resize: 'vertical',
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <div style={{ fontSize: 11, color: reviewText.length >= 20 ? '#10b981' : '#64748b', marginTop: 8 }}>
+                {reviewText.length}/20 characters minimum
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setReviewModal(null)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#020818',
+                  border: '1px solid #1e293b',
+                  borderRadius: 10,
+                  fontSize: 14,
+                  color: '#64748b',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitReview}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: '#fff',
+                  cursor: 'pointer'
+                }}
+              >
+                Submit Review
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       <style>{`
-        input:focus, select:focus {
+        input:focus, select:focus, textarea:focus {
           border-color: #6366f1 !important;
         }
         button:hover:not(:disabled) {

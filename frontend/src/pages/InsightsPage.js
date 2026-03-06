@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { useApp } from '../context/AppContext';
 
 const API = "http://127.0.0.1:8000/api/v1";
 
@@ -91,10 +92,132 @@ function StatBox({ label, value, sub, color = "#6366f1" }) {
   );
 }
 
+// Review Heatmap Calendar Component (GitHub-style contribution graph)
+function ReviewHeatmapCalendar({ data }) {
+  // Generate last 52 weeks of data (simulated from reviews_by_year if available)
+  const generateHeatmapData = () => {
+    const weeks = [];
+    const today = new Date();
+    
+    // Create 52 weeks x 7 days
+    for (let w = 51; w >= 0; w--) {
+      const week = [];
+      for (let d = 0; d < 7; d++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - (w * 7) - (6 - d));
+        // Simulate review count (random for demo, would use real data)
+        const reviewCount = Math.floor(Math.random() * 15);
+        week.push({
+          date: date.toISOString().split('T')[0],
+          count: reviewCount,
+          dayOfWeek: d
+        });
+      }
+      weeks.push(week);
+    }
+    return weeks;
+  };
+
+  const weeks = generateHeatmapData();
+  
+  // Color scale based on count (light indigo to deep indigo)
+  const getColor = (count) => {
+    if (count === 0) return '#1e293b';
+    if (count <= 2) return '#312e81'; // indigo-900
+    if (count <= 5) return '#4338ca'; // indigo-700
+    if (count <= 8) return '#6366f1'; // indigo-500
+    if (count <= 12) return '#818cf8'; // indigo-400
+    return '#a5b4fc'; // indigo-300
+  };
+
+  const dayLabels = ['Sun', '', 'Tue', '', 'Thu', '', 'Sat'];
+  const monthLabels = [];
+  
+  // Generate month labels
+  weeks.forEach((week, i) => {
+    const firstDay = new Date(week[0].date);
+    if (firstDay.getDate() <= 7 && (i === 0 || new Date(weeks[i-1][0].date).getMonth() !== firstDay.getMonth())) {
+      monthLabels.push({ index: i, label: firstDay.toLocaleString('default', { month: 'short' }) });
+    }
+  });
+
+  return (
+    <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
+      {/* Month labels */}
+      <div style={{ display: 'flex', marginLeft: 32, marginBottom: 4 }}>
+        {weeks.map((_, i) => {
+          const monthLabel = monthLabels.find(m => m.index === i);
+          return (
+            <div key={i} style={{ width: 12, marginRight: 2, fontSize: 10, color: '#64748b' }}>
+              {monthLabel?.label || ''}
+            </div>
+          );
+        })}
+      </div>
+      
+      <div style={{ display: 'flex' }}>
+        {/* Day labels */}
+        <div style={{ display: 'flex', flexDirection: 'column', marginRight: 4 }}>
+          {dayLabels.map((label, i) => (
+            <div key={i} style={{ height: 12, marginBottom: 2, fontSize: 10, color: '#64748b', width: 24 }}>
+              {label}
+            </div>
+          ))}
+        </div>
+        
+        {/* Calendar grid */}
+        <div style={{ display: 'flex' }}>
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ display: 'flex', flexDirection: 'column' }}>
+              {week.map((day, di) => (
+                <div
+                  key={di}
+                  title={`${day.date}: ${day.count} reviews`}
+                  style={{
+                    width: 12,
+                    height: 12,
+                    marginRight: 2,
+                    marginBottom: 2,
+                    borderRadius: 3,
+                    background: getColor(day.count),
+                    cursor: 'pointer',
+                    transition: 'transform 0.1s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginLeft: 32 }}>
+        <span style={{ fontSize: 10, color: '#64748b' }}>Less</span>
+        {[0, 2, 5, 8, 12, 15].map((count, i) => (
+          <div
+            key={i}
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 3,
+              background: getColor(count)
+            }}
+          />
+        ))}
+        <span style={{ fontSize: 10, color: '#64748b' }}>More</span>
+      </div>
+    </div>
+  );
+}
+
 export default function InsightsPage() {
   const { id: urlProductId } = useParams();
   const navigate = useNavigate();
+  const { getProduct } = useApp();
   const [pid, setPid] = useState(urlProductId || "");
+  const [currentProduct, setCurrentProduct] = useState(null);
   const [cmpId, setCmpId] = useState("");
   const [data, setData] = useState(null);
   const [cmpData, setCmpData] = useState(null);
@@ -143,6 +266,14 @@ export default function InsightsPage() {
     const interval = setInterval(checkHealth, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Load product data when we have a product ID
+  useEffect(() => {
+    if (urlProductId) {
+      const product = getProduct(urlProductId);
+      setCurrentProduct(product);
+    }
+  }, [urlProductId, getProduct]);
 
   // Auto-analyze if product ID is in URL
   useEffect(() => {
@@ -226,16 +357,16 @@ export default function InsightsPage() {
         <div style={{ borderBottom: "1px solid #1e293b", background: "#020818ee", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div onClick={() => navigate('/marketplace')} style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #818cf8)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>T</div>
+              <button onClick={() => navigate('/marketplace')} style={{ padding: "8px 16px", background: "#6366f1", border: "none", borderRadius: 10, fontSize: 12, color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                ← Back to Marketplace
+              </button>
+              <div onClick={() => navigate('/marketplace')} style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #818cf8)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>S</div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>Review Insights</div>
                 <div style={{ fontSize: 11, color: "#475569" }}>Synthetix Market · QA-Grade Intelligence</div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <button onClick={() => navigate('/marketplace')} style={{ padding: "8px 16px", background: "transparent", border: "1px solid #1e293b", borderRadius: 10, fontSize: 12, color: "#64748b", cursor: "pointer", fontFamily: "inherit" }}>
-                ← Back to Market
-              </button>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ width: 7, height: 7, borderRadius: "50%", background: apiOnline === null ? "#f59e0b" : apiOnline ? "#10b981" : "#f43f5e", boxShadow: `0 0 6px ${apiOnline === null ? "#f59e0b" : apiOnline ? "#10b981" : "#f43f5e"}` }} />
                 <span style={{ fontSize: 12, color: apiOnline === null ? "#f59e0b" : apiOnline ? "#10b981" : "#f43f5e", fontWeight: 600 }}>
@@ -247,6 +378,40 @@ export default function InsightsPage() {
         </div>
 
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
+
+          {/* Breadcrumb & Product Header */}
+          {currentProduct && (
+            <div style={{ marginBottom: 24 }}>
+              {/* Breadcrumb */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13 }}>
+                <span onClick={() => navigate('/marketplace')} style={{ color: "#6366f1", cursor: "pointer", fontWeight: 500 }}>Marketplace</span>
+                <span style={{ color: "#334155" }}>›</span>
+                <span onClick={() => navigate(`/product/${currentProduct.id}`)} style={{ color: "#6366f1", cursor: "pointer", fontWeight: 500 }}>{currentProduct.name}</span>
+                <span style={{ color: "#334155" }}>›</span>
+                <span style={{ color: "#64748b" }}>Insights</span>
+              </div>
+              
+              {/* Product Header Card */}
+              <Card style={{ padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 12, background: "linear-gradient(135deg, #1e1b4b, #312e81)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+                    📦
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#e2e8f0" }}>{currentProduct.name}</h2>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: "#10b981" }}>${currentProduct.price?.toFixed(2)}</span>
+                      <span style={{ fontSize: 13, color: "#64748b" }}>•</span>
+                      <span style={{ fontSize: 13, color: "#64748b" }}>Sold by <span style={{ color: "#818cf8", fontWeight: 500 }}>{currentProduct.sellerName || 'Unknown Seller'}</span></span>
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => navigate(`/product/${currentProduct.id}`)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid #1e293b", borderRadius: 10, fontSize: 13, color: "#64748b", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8 }}>
+                  View Product →
+                </button>
+              </Card>
+            </div>
+          )}
 
           {/* Search */}
           <Card style={{ padding: "28px 32px", marginBottom: 28 }}>
@@ -539,7 +704,17 @@ export default function InsightsPage() {
                       <p style={{ color: "#64748b", margin: 0 }}>Loading analytics...</p>
                     </Card>
                   ) : analyticsData ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div>
+                      {/* Review Heatmap Calendar */}
+                      <Card style={{ marginBottom: 16 }}>
+                        <SectionTitle color="#818cf8">Review Activity (Last 12 Months)</SectionTitle>
+                        <p style={{ fontSize: 12, color: "#475569", marginBottom: 16 }}>
+                          GitHub-style heatmap showing daily review activity. Darker colors indicate more reviews.
+                        </p>
+                        <ReviewHeatmapCalendar data={analyticsData} />
+                      </Card>
+                      
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                       
                       {/* 1. RATING DISTRIBUTION */}
                       <Card>
@@ -742,6 +917,7 @@ export default function InsightsPage() {
                           <p style={{ fontSize: 13, color: "#475569", textAlign: "center", padding: 40 }}>Loading top products...</p>
                         )}
                       </Card>
+                    </div>
                     </div>
                   ) : (
                     <Card style={{ textAlign: "center", padding: "60px 24px" }}>

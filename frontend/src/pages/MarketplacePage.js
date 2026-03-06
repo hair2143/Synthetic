@@ -270,7 +270,7 @@ export default function MarketplacePage() {
               justifyContent: 'center',
               fontWeight: 800,
               fontSize: 18
-            }}>T</div>
+            }}>S</div>
             <span style={{ fontSize: 18, fontWeight: 700 }}>Synthetix Market</span>
           </div>
 

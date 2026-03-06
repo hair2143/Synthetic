@@ -4,8 +4,10 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from functools import lru_cache
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from typing import Optional
 from dotenv import load_dotenv
 
 from models import (
@@ -28,7 +30,15 @@ load_dotenv()
 # ── In-Memory LRU Cache for fast repeated lookups ──────────────────────────────
 _MEMORY_CACHE = {}
 _MEMORY_CACHE_MAX = 100  # Max items in memory
-
+# Pydantic model for review submission
+class ReviewSubmission(BaseModel):
+    product_id: str = Field(..., min_length=3, description="Product ID")
+    review_text: str = Field("", min_length=0, description="Review text")
+    text: str = Field("", min_length=0, description="Review text (alternative name)")
+    rating: int = Field(..., ge=1, le=5, description="Rating 1-5")
+    verified_purchase: bool = Field(True, description="Verified purchase status")
+    reviewer_id: str = Field("", description="Reviewer ID")
+    author: str = Field("Anonymous", description="Author name")
 # Get absolute path based on script location
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -600,32 +610,165 @@ def get_product_summary(product_id: str):
 
 
 @app.post(f"/api/{API_VERSION}/reviews/add", tags=["Marketplace"])
-def add_review(
-    product_id: str = Query(..., description="Product ID"),
-    rating: int = Query(..., ge=1, le=5, description="Rating 1-5"),
-    text: str = Query(..., description="Review text"),
-    author: str = Query("Anonymous", description="Author name")
-):
-    """Add a user review (stored in memory for demo purposes)."""
+def add_review(review: ReviewSubmission):
+    """Add a user review and persist to CSV file. Accepts JSON body."""
+    product_id = review.product_id.strip()
+    
+    if len(product_id) < 3:
+        raise HTTPException(status_code=400, detail="Invalid product_id — must be at least 3 characters")
+    
+    # Support both 'text' and 'review_text' field names
+    review_content = review.review_text if review.review_text else review.text
+    if not review_content or len(review_content.strip()) < 10:
+        raise HTTPException(status_code=400, detail="Review text must be at least 10 characters")
+    
+    review_content = review_content.strip()
+    rid = review.reviewer_id.strip() if review.reviewer_id else review.author
+    
+    # Create new review row
+    new_review = {
+        "product_id": product_id,
+        "review_id": f"R{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
+        "reviewer_id": rid,
+        "rating": review.rating,
+        "review_text": review_content,
+        "review_date": datetime.now().strftime("%Y-%m-%d"),
+        "verified_purchase": review.verified_purchase,
+        "helpful_votes": 0
+    }
+    
+    # Append to CSV file
+    try:
+        import csv
+        
+        file_exists = os.path.exists(CSV_PATH)
+        
+        with open(CSV_PATH, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=["product_id", "review_id", "reviewer_id", "rating", "review_text", "review_date", "verified_purchase", "helpful_votes"])
+            
+            # Write header if file is new
+            if not file_exists:
+                writer.writeheader()
+            
+            writer.writerow(new_review)
+        
+        # Clear memory cache for this product so fresh data is loaded
+        if product_id in _MEMORY_CACHE:
+            del _MEMORY_CACHE[product_id]
+        
+        return {
+            "status": "success",
+            "message": "Review added successfully",
+            "review": {
+                "product_id": product_id,
+                "review_id": new_review["review_id"],
+                "rating": review.rating,
+                "text": review_content,
+                "author": rid,
+                "verified": review.verified_purchase,
+                "submitted_at": datetime.now().isoformat()
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save review: {str(e)}")
+
+
+# ── Products Endpoints ─────────────────────────────────────────────────────────
+
+@app.get(f"/api/{API_VERSION}/products/top", tags=["Marketplace"])
+def get_top_products():
+    """Get top 20 products by review count with avg_rating and sentiment."""
+    try:
+        df = _get_cached_csv(CSV_PATH)
+        
+        if df.empty:
+            return {
+                "status": "success",
+                "products": [],
+                "total_products": 0
+            }
+        
+        # Aggregate by product_id
+        product_stats = df.groupby("product_id").agg(
+            review_count=("review_id", "count"),
+            avg_rating=("rating", "mean"),
+            verified_count=("verified_purchase", "sum")
+        ).reset_index()
+        
+        # Calculate verified percentage
+        product_stats["verified_pct"] = product_stats["verified_count"] / product_stats["review_count"]
+        
+        # Determine sentiment label
+        def get_sentiment(row):
+            if row["avg_rating"] >= 4.0 and row["verified_pct"] >= 0.6:
+                return "loved"
+            elif row["avg_rating"] <= 2.5:
+                return "avoid"
+            else:
+                return "mixed"
+        
+        product_stats["sentiment"] = product_stats.apply(get_sentiment, axis=1)
+        
+        # Sort by review count and get top 20
+        top_products = product_stats.nlargest(20, "review_count")
+        
+        products_list = []
+        for _, row in top_products.iterrows():
+            products_list.append({
+                "product_id": row["product_id"],
+                "review_count": int(row["review_count"]),
+                "avg_rating": round(float(row["avg_rating"]), 2),
+                "verified_pct": round(float(row["verified_pct"]), 2),
+                "sentiment": row["sentiment"]
+            })
+        
+        return {
+            "status": "success",
+            "products": products_list,
+            "total_products": len(product_stats),
+            "generated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch top products: {str(e)}")
+
+
+@app.get(f"/api/{API_VERSION}/products/{{product_id}}/summary", tags=["Marketplace"])
+def get_product_summary(product_id: str):
+    """Get summary info for a specific product."""
     if not product_id or len(product_id.strip()) < 3:
         raise HTTPException(status_code=400, detail="Invalid product_id")
     
-    if not text or len(text.strip()) < 10:
-        raise HTTPException(status_code=400, detail="Review text must be at least 10 characters")
+    product_id = product_id.strip()
+    df, _ = get_reviews_for_product(product_id, CSV_PATH)
     
-    # For demo purposes, we just return success
-    # In a real app, this would persist to a database
+    if df.empty:
+        raise HTTPException(status_code=404, detail=f"No reviews found for product_id: {product_id}")
+    
+    # Calculate stats
+    review_count = len(df)
+    avg_rating = round(float(df["rating"].mean()), 2)
+    
+    verified_count = 0
+    if "verified_purchase" in df.columns:
+        verified_count = int(df["verified_purchase"].sum())
+    
+    verified_pct = round(verified_count / review_count, 2) if review_count > 0 else 0
+    
+    # Determine sentiment label
+    if avg_rating >= 4.0 and verified_pct >= 0.6:
+        sentiment_label = "loved"
+    elif avg_rating <= 2.5:
+        sentiment_label = "avoid"
+    else:
+        sentiment_label = "mixed"
+    
     return {
-        "status": "success",
-        "message": "Review submitted successfully",
-        "review": {
-            "product_id": product_id.strip(),
-            "rating": rating,
-            "text": text.strip(),
-            "author": author,
-            "verified": True,  # User is logged in
-            "submitted_at": datetime.now().isoformat()
-        }
+        "product_id": product_id,
+        "avg_rating": avg_rating,
+        "review_count": review_count,
+        "verified_pct": verified_pct,
+        "sentiment_label": sentiment_label,
+        "generated_at": datetime.now().isoformat()
     }
 
 
