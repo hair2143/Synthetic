@@ -123,7 +123,7 @@ const AuthenticityMeter = ({ score }) => {
 };
 
 // Insights Panel Component
-const InsightsPanel = ({ insights, loading, error }) => {
+const InsightsPanel = ({ insights, loading, error, productId, onViewFull }) => {
   if (loading) {
     return (
       <Card>
@@ -150,10 +150,32 @@ const InsightsPanel = ({ insights, loading, error }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Stats Row */}
+      {(insights.totalReviews || insights.verifiedPurchases) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <Card style={{ padding: '14px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#6366f1' }}>{insights.totalReviews?.toLocaleString() || '—'}</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Total Reviews</div>
+          </Card>
+          <Card style={{ padding: '14px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981' }}>
+              {insights.verifiedPurchases ? Math.round((insights.verifiedPurchases / insights.totalReviews) * 100) : '—'}%
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Verified</div>
+          </Card>
+          <Card style={{ padding: '14px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: insights.confidenceLevel === 'HIGH' ? '#10b981' : '#f59e0b' }}>
+              {insights.confidenceLevel || '—'}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Confidence</div>
+          </Card>
+        </div>
+      )}
+
       {/* Confidence Score */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#818cf8', margin: 0 }}>AI CONFIDENCE SCORE</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#818cf8', margin: 0 }}>CONFIDENCE SCORE</h3>
           <span style={{
             padding: '6px 14px',
             borderRadius: 99,
@@ -238,6 +260,32 @@ const InsightsPanel = ({ insights, loading, error }) => {
           <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8', margin: 0 }}>{insights.summary}</p>
         </Card>
       )}
+
+      {/* Tech Stack */}
+      <div style={{ fontSize: 11, color: '#475569', textAlign: 'center', marginTop: 8 }}>
+        Analysis powered by: <span style={{ color: '#6366f1' }}>spaCy</span> · <span style={{ color: '#10b981' }}>VADER</span> · <span style={{ color: '#f59e0b' }}>PostgreSQL</span> · <span style={{ color: '#818cf8' }}>685MB Amazon Dataset</span>
+      </div>
+
+      {/* View Full Insights Button */}
+      {productId && (
+        <button
+          onClick={onViewFull}
+          style={{
+            width: '100%',
+            padding: '14px 24px',
+            background: '#6366f1',
+            border: 'none',
+            borderRadius: 10,
+            fontSize: 14,
+            fontWeight: 700,
+            color: '#fff',
+            cursor: 'pointer',
+            marginTop: 16
+          }}
+        >
+          View Full Insights Dashboard
+        </button>
+      )}
     </div>
   );
 };
@@ -314,35 +362,51 @@ export default function ProductDetailPage() {
     setInsightsError(null);
     
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/insights/${id}`);
+      // Add timeout for long-running requests (30 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      const response = await fetch(`http://127.0.0.1:8000/api/v1/insights/${id}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch insights');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch insights');
       }
       const data = await response.json();
-      setInsights(data);
+      
+      // Transform API response to match InsightsPanel format
+      const transformedInsights = {
+        confidence: data.confidence?.score || 0.5,
+        aspects: (data.top_aspects || []).slice(0, 6).map(a => ({
+          name: a.aspect,
+          sentiment: a.sentiment || 'neutral'
+        })),
+        pros: (data.top_aspects || [])
+          .filter(a => a.sentiment === 'positive')
+          .slice(0, 5)
+          .map(a => `${a.aspect}: ${a.positive_count} positive reviews`),
+        cons: (data.top_aspects || [])
+          .filter(a => a.sentiment === 'negative' || a.negative_count > a.positive_count)
+          .slice(0, 5)
+          .map(a => `${a.aspect}: ${a.negative_count} negative reviews`),
+        summary: data.summary || 'No summary available',
+        // Additional data from API
+        totalReviews: data.review_quality_audit?.total_reviews,
+        verifiedPurchases: data.review_quality_audit?.verified_purchases,
+        confidenceLevel: data.confidence?.level
+      };
+      
+      setInsights(transformedInsights);
     } catch (err) {
-      // Use mock data if API fails
-      setInsights({
-        confidence: 0.85,
-        aspects: [
-          { name: 'Quality', sentiment: 'positive' },
-          { name: 'Value', sentiment: 'positive' },
-          { name: 'Durability', sentiment: 'neutral' },
-          { name: 'Design', sentiment: 'positive' }
-        ],
-        pros: [
-          'Excellent build quality',
-          'Great value for money',
-          'Fast shipping',
-          'Works as expected',
-          'Good customer support'
-        ],
-        cons: [
-          'Could be better packaged',
-          'Instructions not clear'
-        ],
-        summary: `Based on ${product?.reviewCount || 0} reviews, this product receives mostly positive feedback. Customers particularly appreciate the quality and value. Some minor concerns about packaging.`
-      });
+      console.error('Insights fetch error:', err);
+      if (err.name === 'AbortError') {
+        setInsightsError('Request timed out. The server is processing a large dataset. Please try again.');
+      } else {
+        setInsightsError(err.message || 'Failed to load insights. Make sure the API server is running.');
+      }
     } finally {
       setInsightsLoading(false);
     }
@@ -677,14 +741,20 @@ export default function ProductDetailPage() {
                 marginBottom: 24
               }}
             >
-              🤖 View AI Insights
-              <span style={{ fontSize: 12, opacity: 0.7 }}>Powered by GPT</span>
+                            View AI Insights
+              <span style={{ fontSize: 12, opacity: 0.7 }}>spaCy + VADER</span>
             </button>
 
             {/* AI Insights Panel */}
             {showInsights && (
               <div style={{ marginBottom: 24 }}>
-                <InsightsPanel insights={insights} loading={insightsLoading} error={insightsError} />
+                <InsightsPanel 
+                  insights={insights} 
+                  loading={insightsLoading} 
+                  error={insightsError} 
+                  productId={id}
+                  onViewFull={() => navigate(`/insights/${id}`)}
+                />
               </div>
             )}
 
@@ -767,7 +837,7 @@ export default function ProductDetailPage() {
                   marginBottom: 16,
                   borderBottom: '1px solid #1e293b'
                 }}>
-                  <AuthenticityMeter score={product.verifiedPct || 0.5} />
+                  <AuthenticityMeter score={insights?.confidence || product.verifiedPct || 0.5} />
                 </div>
                 
                 {/* Price */}

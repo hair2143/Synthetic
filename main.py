@@ -94,6 +94,8 @@ def get_insights(
     product_id: str,
     force_refresh: bool = Query(False, description="Bypass cache and recompute")
 ):
+    print(f"🔍 Insights request received for: {product_id}")
+    
     if not product_id or len(product_id.strip()) < 3:
         raise HTTPException(status_code=400, detail="Invalid product_id — must be at least 3 characters")
 
@@ -101,14 +103,17 @@ def get_insights(
 
     # --- Memory Cache Check (fastest) ---
     if not force_refresh and product_id in _MEMORY_CACHE:
+        print(f"✅ Memory cache hit for {product_id}")
         result = _MEMORY_CACHE[product_id].copy()
         result["cache_status"] = "memory_hit"
         return result
 
     # --- DB Cache Check ---
     if not force_refresh:
+        print(f"🔍 Checking DB cache for {product_id}")
         cached = get_cached_insights(product_id)
         if cached:
+            print(f"✅ DB cache hit for {product_id}")
             cached["cache_status"] = "db_hit"
             # Store in memory for next time
             if len(_MEMORY_CACHE) >= _MEMORY_CACHE_MAX:
@@ -117,7 +122,9 @@ def get_insights(
             return cached
 
     # --- Load Data ---
+    print(f"📂 Loading reviews for {product_id}")
     df, source_info = get_reviews_for_product(product_id, CSV_PATH)
+    print(f"📊 Found {len(df)} reviews for {product_id}")
 
     if df.empty:
         raise HTTPException(
@@ -138,19 +145,29 @@ def get_insights(
         )
 
     # --- Filter & Audit ---
+    print(f"🔧 Filtering reviews for {product_id}")
     clean_df, audit = filter_reviews(df)
+    print(f"✅ Filtering done: {len(clean_df)} reviews remain")
     audit["audit_confidence"] = "HIGH ✅" if audit["verified_purchases"] / max(audit["total_reviews"], 1) > 0.7 else "MEDIUM ⚠️"
 
     if clean_df.empty:
         raise HTTPException(status_code=422, detail="All reviews filtered — no quality data available")
 
     # --- Analysis ---
+    print(f"🔍 Extracting aspects...")
     top_aspects, category = get_top_aspects(clean_df)
+    print(f"✅ Found {len(top_aspects)} aspects")
+    print(f"🔍 Building pros/cons...")
     pros, cons = build_pros_cons(clean_df, top_aspects)
+    print(f"🔍 Computing sentiment drift...")
     drift = compute_sentiment_drift(clean_df, top_aspects)
+    print(f"🔍 Detecting conflicts...")
     conflicts = detect_conflicts(clean_df, top_aspects)
+    print(f"🔍 Computing confidence...")
     confidence = compute_confidence(clean_df, top_aspects, audit)
+    print(f"🔍 Generating summary...")
     summary = generate_summary(product_id, top_aspects, pros, cons, drift, confidence, audit)
+    print(f"✅ Analysis complete for {product_id}")
 
     result = {
         "product_id": product_id,

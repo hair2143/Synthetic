@@ -6,12 +6,25 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import HistoryPage from './pages/HistoryPage';
 import InsightsPage from './pages/InsightsPage';
 import SellItemPage from './pages/SellItemPage';
+import AdminPage from './pages/AdminPage';
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useApp();
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
+// Admin Route wrapper
+function AdminRoute({ children }) {
+  const { currentUser, isAuthenticated } = useApp();
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  if (currentUser?.role !== 'admin') {
+    return <Navigate to="/marketplace" replace />;
   }
   return children;
 }
@@ -59,6 +72,14 @@ function AppRoutes() {
           <ProtectedRoute>
             <SellItemPage />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminPage />
+          </AdminRoute>
         }
       />
       {/* Fallback route */}

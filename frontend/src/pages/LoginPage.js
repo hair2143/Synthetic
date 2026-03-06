@@ -7,7 +7,6 @@ export default function LoginPage() {
   const { login, register, continueAsGuest } = useApp();
   
   const [activeTab, setActiveTab] = useState('login');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
   // Login form
@@ -24,71 +23,50 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
     
     if (!loginEmail || !loginPassword) {
       setError('Please fill in all fields');
-      setLoading(false);
       return;
     }
     
-    setTimeout(() => {
-      const result = login(loginEmail, loginPassword, rememberMe);
-      if (result.success) {
-        // Small delay to ensure state propagates before navigation
-        setTimeout(() => {
-          if (result.isAdmin) {
-            navigate('/admin');
-          } else {
-            navigate('/marketplace');
-          }
-          setLoading(false);
-        }, 100);
+    const result = login(loginEmail, loginPassword, rememberMe);
+    if (result.success) {
+      if (result.isAdmin) {
+        navigate('/admin');
       } else {
-        setLoading(false);
+        navigate('/marketplace');
       }
-    }, 800);
+    }
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
     
     if (!regName || !regEmail || !regPassword || !regConfirm) {
       setError('Please fill in all fields');
-      setLoading(false);
       return;
     }
     
     if (regPassword !== regConfirm) {
       setError('Passwords do not match');
-      setLoading(false);
       return;
     }
     
     if (regPassword.length < 6) {
       setError('Password must be at least 6 characters');
-      setLoading(false);
       return;
     }
     
-    setTimeout(() => {
-      const result = register(regName, regEmail, regPassword);
-      if (result.success) {
-        setTimeout(() => {
-          navigate('/marketplace');
-          setLoading(false);
-        }, 100);
-      } else {
-        setLoading(false);
-      }
-    }, 800);
+    const result = register(regName, regEmail, regPassword);
+    if (result.success) {
+      navigate('/marketplace');
+    }
   };
 
   const handleGuest = () => {
     continueAsGuest();
-    setTimeout(() => navigate('/marketplace'), 100);
+    navigate('/marketplace');
   };
 
   const inputStyle = {
@@ -243,12 +221,10 @@ export default function LoginPage() {
                 Remember me
               </label>
             </div>
-            <button type="submit" disabled={loading} style={{
-              ...buttonStyle,
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? 'not-allowed' : 'pointer'
+            <button type="submit" style={{
+              ...buttonStyle
             }}>
-              {loading ? 'Signing in...' : 'Sign In →'}
+              Sign In
             </button>
           </form>
         )}
@@ -304,12 +280,10 @@ export default function LoginPage() {
                 style={inputStyle}
               />
             </div>
-            <button type="submit" disabled={loading} style={{
-              ...buttonStyle,
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? 'not-allowed' : 'pointer'
+            <button type="submit" style={{
+              ...buttonStyle
             }}>
-              {loading ? 'Creating account...' : 'Create Account →'}
+              Create Account
             </button>
           </form>
         )}

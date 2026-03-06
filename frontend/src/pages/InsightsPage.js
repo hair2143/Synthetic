@@ -9,16 +9,6 @@ const pct = (v) => Math.round((v || 0) * 100);
 const sentColor = (s) => s === "positive" ? "#10b981" : s === "negative" ? "#f43f5e" : "#f59e0b";
 const impactColor = (i) => i === "HIGH" ? "#6366f1" : i === "MEDIUM" ? "#f59e0b" : "#64748b";
 
-// Debounce hook for faster perceived performance
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-  return debouncedValue;
-}
-
 // Check if API is online
 async function checkApiHealth() {
   try {
@@ -525,6 +515,16 @@ export default function InsightsPage() {
                   <Card>
                     <SectionTitle>Summary</SectionTitle>
                     <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>{data.summary}</p>
+                    <div style={{ marginTop: 16, padding: "12px 16px", background: "#020818", borderRadius: 8, border: "1px solid #1e293b" }}>
+                      <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", marginBottom: 8 }}>Analysis Technologies</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        <span style={{ fontSize: 12, padding: "4px 10px", background: "#6366f120", color: "#6366f1", borderRadius: 6 }}>spaCy NLP</span>
+                        <span style={{ fontSize: 12, padding: "4px 10px", background: "#10b98120", color: "#10b981", borderRadius: 6 }}>VADER Sentiment</span>
+                        <span style={{ fontSize: 12, padding: "4px 10px", background: "#f59e0b20", color: "#f59e0b", borderRadius: 6 }}>PostgreSQL</span>
+                        <span style={{ fontSize: 12, padding: "4px 10px", background: "#818cf820", color: "#818cf8", borderRadius: 6 }}>Aspect Extraction</span>
+                        <span style={{ fontSize: 12, padding: "4px 10px", background: "#a855f720", color: "#a855f7", borderRadius: 6 }}>Trust Scoring</span>
+                      </div>
+                    </div>
                   </Card>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                     <Card>

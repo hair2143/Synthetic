@@ -38,11 +38,17 @@ Every pro and con is proven by real review quotes. No AI invention. No fabricati
 
 ## Setup
 
-### 1. Clone & Install
+### 1. Clone & Install Backend
 
 ```bash
-git clone https://github.com/yourname/synthetix-review-api
-cd synthetix-review-api
+git clone https://github.com/yourusername/synthetix.git
+cd synthetix
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
@@ -85,6 +91,16 @@ uvicorn main:app --reload --port 8000
 ```
 
 API docs available at: http://localhost:8000/docs
+
+### 7. Run Frontend (Optional)
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Frontend available at: http://localhost:3000
 
 ---
 

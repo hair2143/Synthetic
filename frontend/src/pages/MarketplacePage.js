@@ -69,7 +69,6 @@ export default function MarketplacePage() {
     addToCart,
     cart,
     cartTotal,
-    removeFromCart,
     updateCartQuantity,
     checkout,
     listProduct,

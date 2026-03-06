@@ -31,8 +31,8 @@ def _get_cached_csv(csv_path: str) -> pd.DataFrame:
     if not os.path.exists(csv_path):
         return pd.DataFrame()
     
-    print(f"📂 Loading CSV (one-time)... {csv_path}")
-    raw = pd.read_csv(csv_path, dtype={"product_id": str})
+    print(f"📂 Loading CSV (first 10k rows)... {csv_path}")
+    raw = pd.read_csv(csv_path, dtype={"product_id": str}, nrows=10000)
     raw["review_date"] = pd.to_datetime(raw.get("review_date"), errors="coerce")
     raw = _normalize_df(raw)
     
