@@ -298,7 +298,11 @@ export function AppProvider({ children }) {
   };
 
   // Submit review function
-  const submitReview = async (productId, reviewText, rating) => {
+  const submitReview = async (productId, reviewData) => {
+    // Handle both object and separate arguments
+    const reviewText = typeof reviewData === 'object' ? reviewData.text : reviewData;
+    const rating = typeof reviewData === 'object' ? reviewData.rating : arguments[2];
+    
     const review = {
       productId,
       reviewText,
@@ -306,7 +310,8 @@ export function AppProvider({ children }) {
       reviewerId: currentUser?.email || 'guest',
       reviewerName: currentUser?.name || 'Guest',
       verifiedPurchase: purchasedProducts.some(p => p.id === productId),
-      submittedAt: new Date().toISOString()
+      submittedAt: new Date().toISOString(),
+      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     };
     
     setUserReviews(prev => [...prev, review]);
@@ -402,6 +407,11 @@ export function AppProvider({ children }) {
 
   // Recent reviews for ticker
   const getRecentReviews = () => RECENT_REVIEWS;
+  
+  // Get user's review for a specific product
+  const getUserReview = (productId) => {
+    return userReviews.find(r => r.productId === productId) || null;
+  };
 
   const isAuthenticated = currentUser !== null;
 
@@ -444,6 +454,7 @@ export function AppProvider({ children }) {
     userReviews,
     submitReview,
     getRecentReviews,
+    getUserReview,
     
     // Compare
     compareList,

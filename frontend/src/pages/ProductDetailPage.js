@@ -301,6 +301,7 @@ export default function ProductDetailPage() {
     purchaseProduct,
     purchasedProducts,
     submitReview,
+    getUserReview,
     showToast
   } = useApp();
 
@@ -321,12 +322,28 @@ export default function ProductDetailPage() {
   const [reviewText, setReviewText] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewError, setReviewError] = useState('');
+  const [userReview, setUserReview] = useState(null);
 
   // Check if already purchased
   useEffect(() => {
     const hasPurchased = purchasedProducts.some(p => p.id === id);
     setPurchased(hasPurchased);
   }, [purchasedProducts, id]);
+
+  // Load existing user review if any
+  useEffect(() => {
+    const existingReview = getUserReview(id);
+    if (existingReview) {
+      setUserReview({
+        rating: existingReview.rating,
+        text: existingReview.reviewText,
+        author: existingReview.reviewerName || 'Anonymous',
+        verified: existingReview.verifiedPurchase,
+        date: existingReview.date || new Date(existingReview.submittedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      });
+      setReviewSubmitted(true);
+    }
+  }, [id, getUserReview]);
 
   useEffect(() => {
     const p = getProduct(id);
@@ -444,15 +461,17 @@ export default function ProductDetailPage() {
     }
     
     // Save to local context
-    submitReview(id, {
+    const reviewData = {
       rating: reviewRating,
       text: reviewText,
       author: currentUser?.name || 'Anonymous',
-      verified: true
-    });
+      verified: true,
+      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    };
     
+    submitReview(id, reviewData);
+    setUserReview(reviewData);
     setReviewSubmitted(true);
-    setReviewText('');
     showToast('Review submitted! It will appear in insights shortly.', 'success');
   };
 
@@ -984,29 +1003,81 @@ export default function ProductDetailPage() {
                     ✓ Verified Purchase
                   </div>
                   
-                  {reviewSubmitted ? (
-                    <div style={{ textAlign: 'center', padding: '30px 0' }}>
-                      <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
-                      <p style={{ color: '#10b981', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-                        Thank you for your review!
-                      </p>
-                      <p style={{ color: '#64748b', fontSize: 14, marginBottom: 16 }}>
-                        Your feedback has been saved to the database and will appear in product insights.
-                      </p>
+                  {reviewSubmitted && userReview ? (
+                    <div style={{ padding: '20px 0' }}>
+                      {/* Success Header */}
+                      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                        <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                        <p style={{ color: '#10b981', fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+                          Thank you for your review!
+                        </p>
+                        <p style={{ color: '#64748b', fontSize: 12 }}>
+                          Saved to database • Will appear in insights
+                        </p>
+                      </div>
+                      
+                      {/* Your Review Card */}
+                      <div style={{
+                        background: '#020818',
+                        border: '1px solid #1e293b',
+                        borderRadius: 12,
+                        padding: 20,
+                        marginBottom: 16
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#818cf8' }}>YOUR REVIEW</span>
+                          <span style={{
+                            padding: '4px 10px',
+                            background: '#10b98115',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            color: '#10b981',
+                            fontWeight: 600
+                          }}>✓ Verified Purchase</span>
+                        </div>
+                        
+                        {/* Stars */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            {[1,2,3,4,5].map(star => (
+                              <span key={star} style={{ color: star <= userReview.rating ? '#fbbf24' : '#334155', fontSize: 18 }}>★</span>
+                            ))}
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>{userReview.rating}.0</span>
+                        </div>
+                        
+                        {/* Review Text */}
+                        <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6, marginBottom: 12 }}>
+                          "{userReview.text}"
+                        </p>
+                        
+                        {/* Author & Date */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, color: '#64748b' }}>— {userReview.author}</span>
+                          <span style={{ fontSize: 11, color: '#475569' }}>{userReview.date}</span>
+                        </div>
+                      </div>
+                      
+                      {/* View Insights Button */}
                       <button
-                        onClick={() => navigate(`/insights/${id}`)}
+                        onClick={handleViewInsights}
                         style={{
-                          padding: '12px 20px',
-                          background: '#1e1b4b',
-                          border: '1px solid #4338ca',
+                          width: '100%',
+                          padding: '14px 20px',
+                          background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+                          border: 'none',
                           borderRadius: 10,
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: 600,
-                          color: '#818cf8',
-                          cursor: 'pointer'
+                          color: '#fff',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8
                         }}
                       >
-                        📊 View Product Insights
+                        📊 View AI Insights for This Product
                       </button>
                     </div>
                   ) : (
