@@ -498,19 +498,22 @@ export default function ProductDetailPage() {
         </div>
       </header>
 
-      {/* Success Banner */}
+      {/* Success Banner - Item Purchased */}
       {justPurchased && (
         <div style={{
           background: 'linear-gradient(90deg, #10b981, #059669)',
-          padding: '16px 24px',
+          padding: '20px 24px',
           textAlign: 'center'
         }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
-            🎉 Item Purchased Successfully!
-          </span>
-          <span style={{ marginLeft: 12, fontSize: 14, color: '#d1fae5' }}>
-            Leave a review below to help other buyers.
-          </span>
+          <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>🎉</div>
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#fff', display: 'block', marginBottom: 8 }}>
+              Item Purchased Successfully!
+            </span>
+            <span style={{ fontSize: 14, color: '#d1fae5' }}>
+              Leave a review below to help other buyers make informed decisions.
+            </span>
+          </div>
         </div>
       )}
 
@@ -875,9 +878,23 @@ export default function ProductDetailPage() {
 
               {/* Review Form - Only shown after purchase */}
               {purchased && (
-                <Card>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: '#818cf8' }}>
-                    WRITE YOUR REVIEW
+                <Card style={{ border: justPurchased ? '2px solid #10b981' : '1px solid #1e293b' }}>
+                  {justPurchased && (
+                    <div style={{
+                      background: '#10b98115',
+                      margin: '-20px -24px 20px -24px',
+                      padding: '12px 24px',
+                      borderBottom: '1px solid #10b98130',
+                      borderRadius: '14px 14px 0 0'
+                    }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#10b981' }}>
+                        ✨ Your review helps other buyers!
+                      </span>
+                    </div>
+                  )}
+                  
+                  <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#818cf8' }}>
+                    📝 WRITE YOUR REVIEW
                   </h3>
                   
                   {/* Verified Purchase Badge */}
@@ -885,78 +902,124 @@ export default function ProductDetailPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    padding: '6px 12px',
+                    padding: '8px 14px',
                     background: '#10b98115',
                     border: '1px solid #10b98130',
                     borderRadius: 99,
-                    fontSize: 11,
+                    fontSize: 12,
                     color: '#10b981',
                     fontWeight: 600,
-                    marginBottom: 16
+                    marginBottom: 20
                   }}>
                     ✓ Verified Purchase
                   </div>
                   
                   {reviewSubmitted ? (
-                    <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                      <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
-                      <p style={{ color: '#10b981', fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+                    <div style={{ textAlign: 'center', padding: '30px 0' }}>
+                      <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+                      <p style={{ color: '#10b981', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
                         Thank you for your review!
                       </p>
-                      <p style={{ color: '#64748b', fontSize: 13 }}>
-                        Your feedback helps other buyers make informed decisions.
+                      <p style={{ color: '#64748b', fontSize: 14, marginBottom: 16 }}>
+                        Your feedback has been saved to the database and will appear in product insights.
                       </p>
+                      <button
+                        onClick={() => navigate(`/insights/${id}`)}
+                        style={{
+                          padding: '12px 20px',
+                          background: '#1e1b4b',
+                          border: '1px solid #4338ca',
+                          borderRadius: 10,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: '#818cf8',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📊 View Product Insights
+                      </button>
                     </div>
                   ) : (
                     <form onSubmit={handleSubmitReview}>
                       {/* Star Rating */}
-                      <div style={{ marginBottom: 16 }}>
-                        <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 8 }}>
-                          Your Rating
+                      <div style={{ marginBottom: 20 }}>
+                        <label style={{ fontSize: 13, color: '#94a3b8', display: 'block', marginBottom: 10, fontWeight: 600 }}>
+                          Your Star Rating <span style={{ color: '#f43f5e' }}>*</span>
                         </label>
-                        <StarRating 
-                          rating={reviewRating} 
-                          interactive 
-                          onRatingChange={setReviewRating}
-                          size={32}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <StarRating 
+                            rating={reviewRating} 
+                            interactive 
+                            onRatingChange={setReviewRating}
+                            size={36}
+                          />
+                          <span style={{
+                            padding: '6px 12px',
+                            background: reviewRating >= 4 ? '#10b98115' : reviewRating >= 3 ? '#f59e0b15' : '#f43f5e15',
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: reviewRating >= 4 ? '#10b981' : reviewRating >= 3 ? '#f59e0b' : '#f43f5e'
+                          }}>
+                            {reviewRating >= 4 ? 'Great!' : reviewRating >= 3 ? 'Okay' : 'Poor'}
+                          </span>
+                        </div>
                       </div>
                       
                       {/* Review Text */}
-                      <div style={{ marginBottom: 16 }}>
-                        <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 8 }}>
+                      <div style={{ marginBottom: 20 }}>
+                        <label style={{ fontSize: 13, color: '#94a3b8', display: 'block', marginBottom: 10, fontWeight: 600 }}>
                           Your Review <span style={{ color: '#f43f5e' }}>*</span>
                         </label>
                         <textarea
                           value={reviewText}
                           onChange={e => setReviewText(e.target.value)}
-                          placeholder="Share your experience with this product (minimum 20 characters)..."
-                          rows={5}
+                          placeholder="Share your honest experience with this product. What did you like or dislike? Would you recommend it to others? (minimum 20 characters)"
+                          rows={6}
                           style={{
                             width: '100%',
-                            padding: '14px',
+                            padding: '16px',
                             background: '#020818',
-                            border: reviewError ? '1px solid #f43f5e' : '1px solid #1e293b',
-                            borderRadius: 10,
-                            fontSize: 13,
+                            border: reviewError ? '2px solid #f43f5e' : '1px solid #1e293b',
+                            borderRadius: 12,
+                            fontSize: 14,
                             color: '#e2e8f0',
                             resize: 'vertical',
                             outline: 'none',
-                            fontFamily: 'inherit'
+                            fontFamily: 'inherit',
+                            lineHeight: 1.6
                           }}
                         />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
                           {reviewError && (
-                            <span style={{ fontSize: 11, color: '#f43f5e' }}>{reviewError}</span>
+                            <span style={{ fontSize: 12, color: '#f43f5e' }}>{reviewError}</span>
                           )}
                           <span style={{ 
-                            fontSize: 11, 
+                            fontSize: 12, 
                             color: reviewText.length >= 20 ? '#10b981' : '#64748b',
-                            marginLeft: 'auto'
+                            marginLeft: 'auto',
+                            fontWeight: reviewText.length >= 20 ? 600 : 400
                           }}>
-                            {reviewText.length}/20 min
+                            {reviewText.length >= 20 ? '✓' : ''} {reviewText.length}/20 min
                           </span>
                         </div>
+                      </div>
+                      
+                      {/* Data saved notice */}
+                      <div style={{
+                        padding: '12px 16px',
+                        background: '#020818',
+                        border: '1px solid #1e293b',
+                        borderRadius: 10,
+                        marginBottom: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10
+                      }}>
+                        <span style={{ fontSize: 18 }}>💾</span>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>
+                          Your review will be saved to the CSV database and used for product insights analysis.
+                        </span>
                       </div>
                       
                       {/* Submit Button */}
@@ -964,17 +1027,21 @@ export default function ProductDetailPage() {
                         type="submit"
                         style={{
                           width: '100%',
-                          padding: '14px',
+                          padding: '16px',
                           background: 'linear-gradient(135deg, #10b981, #059669)',
                           border: 'none',
-                          borderRadius: 10,
-                          fontSize: 14,
+                          borderRadius: 12,
+                          fontSize: 15,
                           fontWeight: 700,
                           color: '#fff',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8
                         }}
                       >
-                        Submit Review
+                        ✓ Submit Review
                       </button>
                     </form>
                   )}

@@ -314,9 +314,29 @@ export default function HistoryPage() {
 
       <main style={{ maxWidth: 1400, margin: '0 auto', padding: '32px 24px' }}>
         {/* Page Title */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>📋 My History</h1>
-          <p style={{ color: '#64748b' }}>View your sales and purchase history</p>
+        <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>📋 My History</h1>
+            <p style={{ color: '#64748b' }}>View your sales and purchase history</p>
+          </div>
+          <button
+            onClick={() => navigate('/sell')}
+            style={{
+              padding: '14px 24px',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              border: 'none',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 700,
+              color: '#fff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}
+          >
+            + Sell New Item
+          </button>
         </div>
 
         {/* Stats Cards */}
@@ -525,38 +545,58 @@ export default function HistoryPage() {
               {activeTab === 'sold' && paginatedItems.map((item, idx) => (
                 <div
                   key={idx}
+                  onClick={() => navigate(`/insights/${item.id}`)}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1.5fr 120px 100px 120px 80px 100px 150px',
+                    gridTemplateColumns: '1.5fr 140px 100px 120px 80px 100px 150px',
                     padding: '16px 24px',
                     borderBottom: '1px solid #1e293b',
                     alignItems: 'center',
                     fontSize: 13,
-                    transition: 'background 0.2s'
+                    transition: 'all 0.2s',
+                    cursor: 'pointer'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#0f172a80'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#0f172a';
+                    e.currentTarget.style.borderLeft = '3px solid #6366f1';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderLeft = '3px solid transparent';
+                  }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 8,
-                      background: '#1e293b',
+                      width: 44,
+                      height: 44,
+                      borderRadius: 10,
+                      background: 'linear-gradient(135deg, #1e293b, #0f172a)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 18
+                      fontSize: 20
                     }}>
                       {item.category === 'Audio' ? '🎧' : item.category === 'Electronics' ? '💻' : item.category === 'Gaming' ? '🎮' : '📦'}
                     </div>
-                    <div style={{ fontWeight: 600 }}>{item.name}</div>
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: 2 }}>{item.name}</div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>Click to view insights →</div>
+                    </div>
                   </div>
-                  <div style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>
-                    {item.id?.slice(0, 10)}...
+                  <div>
+                    <code style={{ 
+                      padding: '4px 8px',
+                      background: '#020818',
+                      borderRadius: 6,
+                      color: '#818cf8', 
+                      fontFamily: 'monospace', 
+                      fontSize: 11 
+                    }}>
+                      {item.id}
+                    </code>
                   </div>
                   <div style={{ fontWeight: 600, color: '#10b981' }}>₹{item.price.toLocaleString()}</div>
-                  <div style={{ color: '#64748b', fontSize: 12 }}>
+                  <div style={{ color: '#94a3b8', fontSize: 12 }}>
                     {new Date(item.listedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </div>
                   <div style={{ color: '#94a3b8' }}>
@@ -567,19 +607,22 @@ export default function HistoryPage() {
                   </div>
                   <div>
                     <button
-                      onClick={() => navigate(`/insights/${item.id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/insights/${item.id}`);
+                      }}
                       style={{
-                        padding: '6px 12px',
-                        background: '#1e1b4b',
+                        padding: '8px 14px',
+                        background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
                         border: '1px solid #4338ca',
-                        borderRadius: 6,
-                        fontSize: 11,
+                        borderRadius: 8,
+                        fontSize: 12,
                         color: '#818cf8',
                         fontWeight: 600,
                         cursor: 'pointer'
                       }}
                     >
-                      📊 View Insights
+                      📊 Insights
                     </button>
                   </div>
                 </div>

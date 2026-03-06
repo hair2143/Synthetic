@@ -5,6 +5,7 @@ import MarketplacePage from './pages/MarketplacePage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import HistoryPage from './pages/HistoryPage';
 import InsightsPage from './pages/InsightsPage';
+import SellItemPage from './pages/SellItemPage';
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -49,6 +50,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <HistoryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sell"
+        element={
+          <ProtectedRoute>
+            <SellItemPage />
           </ProtectedRoute>
         }
       />

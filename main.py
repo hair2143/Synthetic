@@ -609,6 +609,131 @@ def get_product_summary(product_id: str):
     }
 
 
+# Pydantic model for new product
+class ProductSubmission(BaseModel):
+    name: str = Field(..., min_length=3, description="Product name")
+    price: int = Field(..., ge=1, description="Price in cents")
+    category: str = Field("General", description="Product category")
+    condition: str = Field("New", description="Product condition")
+    description: str = Field("", description="Product description")
+    initial_review: str = Field("", description="Initial review text")
+    initial_rating: int = Field(5, ge=1, le=5, description="Initial rating")
+
+
+@app.get(f"/api/{API_VERSION}/products", tags=["Marketplace"])
+def get_all_products():
+    """Get all unique products from CSV with their stats."""
+    try:
+        df = _get_cached_csv(CSV_PATH)
+        
+        if df.empty:
+            return {"products": [], "total": 0}
+        
+        # Aggregate by product_id
+        product_stats = df.groupby("product_id").agg(
+            review_count=("rating", "count"),
+            avg_rating=("rating", "mean"),
+        ).reset_index()
+        
+        # Calculate verified pct if column exists
+        if "verified_purchase" in df.columns:
+            verified_stats = df.groupby("product_id")["verified_purchase"].mean().reset_index()
+            verified_stats.columns = ["product_id", "verified_pct"]
+            product_stats = product_stats.merge(verified_stats, on="product_id", how="left")
+        else:
+            product_stats["verified_pct"] = 0.5
+        
+        # Determine sentiment
+        def get_sentiment(row):
+            if row["avg_rating"] >= 4.0:
+                return "loved"
+            elif row["avg_rating"] >= 3.0:
+                return "mixed"
+            else:
+                return "avoid"
+        
+        product_stats["sentiment"] = product_stats.apply(get_sentiment, axis=1)
+        
+        # Sort by review count
+        product_stats = product_stats.sort_values("review_count", ascending=False)
+        
+        products = []
+        for _, row in product_stats.iterrows():
+            products.append({
+                "id": row["product_id"],
+                "reviewCount": int(row["review_count"]),
+                "avgRating": round(float(row["avg_rating"]), 2),
+                "verifiedPct": round(float(row["verified_pct"]), 2) if pd.notna(row["verified_pct"]) else 0.5,
+                "sentiment": row["sentiment"]
+            })
+        
+        return {
+            "products": products,
+            "total": len(products),
+            "generated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch products: {str(e)}")
+
+
+@app.post(f"/api/{API_VERSION}/products/add", tags=["Marketplace"])
+def add_product(product: ProductSubmission):
+    """Create a new product by generating a unique ID and adding to CSV."""
+    import random
+    import string
+    import csv
+    
+    # Generate unique product ID (format: B + 9 alphanumeric chars, like Amazon ASINs)
+    while True:
+        new_id = "B" + "".join(random.choices(string.ascii_uppercase + string.digits, k=9))
+        # Check if ID already exists
+        df = _get_cached_csv(CSV_PATH)
+        if new_id not in df["product_id"].values:
+            break
+    
+    # Create initial review entry
+    review_text = product.initial_review if product.initial_review else f"Great product! {product.name} - {product.description}"
+    if len(review_text) < 10:
+        review_text = f"This is an excellent product listing for {product.name}. Highly recommended."
+    
+    new_row = {
+        "product_id": new_id,
+        "review_text": review_text,
+        "rating": float(product.initial_rating),
+        "review_date": datetime.now().strftime("%m %d, %Y"),
+        "verified_purchase": True,
+        "reviewer_id": f"USR{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    }
+    
+    try:
+        # Append to CSV
+        with open(CSV_PATH, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=["product_id", "review_text", "rating", "review_date", "verified_purchase", "reviewer_id"])
+            writer.writerow(new_row)
+        
+        # Clear cache so new product appears
+        _get_cached_csv.cache_clear() if hasattr(_get_cached_csv, 'cache_clear') else None
+        
+        return {
+            "status": "success",
+            "message": "Product created and saved to CSV",
+            "product": {
+                "id": new_id,
+                "name": product.name,
+                "price": product.price,
+                "category": product.category,
+                "condition": product.condition,
+                "description": product.description,
+                "avgRating": product.initial_rating,
+                "reviewCount": 1,
+                "verifiedPct": 1.0,
+                "sentiment": "loved" if product.initial_rating >= 4 else "mixed"
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create product: {str(e)}")
+
+
 @app.post(f"/api/{API_VERSION}/reviews/add", tags=["Marketplace"])
 def add_review(review: ReviewSubmission):
     """Add a user review and persist to CSV file. Accepts JSON body."""

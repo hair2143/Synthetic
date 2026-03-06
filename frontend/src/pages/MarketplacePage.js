@@ -372,7 +372,7 @@ export default function MarketplacePage() {
 
             {/* Sell Button */}
             <button
-              onClick={() => setShowSellModal(true)}
+              onClick={() => navigate('/sell')}
               style={{
                 padding: '10px 20px',
                 background: 'linear-gradient(135deg, #10b981, #059669)',
@@ -384,7 +384,7 @@ export default function MarketplacePage() {
                 cursor: 'pointer'
               }}
             >
-              + Sell
+              + Sell Item
             </button>
 
             {/* Cart */}
